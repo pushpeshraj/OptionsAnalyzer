@@ -845,6 +845,34 @@
     fill: transparent;
     cursor: crosshair;
   }
+
+  /* ---------- Chart range toggle (±10% / ±20%) ---------- */
+  .range-toggle {
+    display: inline-flex;
+    background: #0c0d10;
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    padding: 2px;
+    margin-left: 0.8rem;
+  }
+  .range-btn {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    padding: 3px 9px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: all 0.15s;
+    letter-spacing: 0.02em;
+  }
+  .range-btn:hover { color: var(--ink); }
+  .range-btn.active {
+    background: var(--accent);
+    color: #0c0d10;
+    font-weight: 700;
+  }
 </style>
 </head>
 <body>
@@ -980,6 +1008,10 @@
         <div class="panel chart-panel">
           <div class="chart-header">
             <span class="title">Payoff at Expiry</span>
+            <div class="range-toggle" id="range-toggle">
+              <button class="range-btn active" data-range="10" type="button">±10%</button>
+              <button class="range-btn" data-range="20" type="button">±20%</button>
+            </div>
             <div class="chart-legend">
               <span><span class="dot call-oi"></span>Call OI</span>
               <span><span class="dot put-oi"></span>Put OI</span>
@@ -1064,6 +1096,8 @@ let LEG_ID = 0;
 // Calendar-handling state:
 let TARGET_KEY = null;       // file key of the "target date" — payoff x-axis is underlying at this expiry
 let PAST_UNDERLYINGS = {};   // fileKey → underlying value at THAT expiry (for legs earlier than target)
+// Chart range %: 10 (default) or 20 — controlled by the toggle in the chart header
+let CHART_RANGE_PCT = 10;
 
 // ---------- CSV parsing ----------
 function parseCSVLine(line) {
@@ -2027,9 +2061,10 @@ function computeStats() {
       maxProfitUnlimited: false, maxLossUnlimited: false };
   }
 
-  // Display range: bracket spot ± reasonable swing, but always include all leg strikes.
-  let minS = DATA.spot * 0.80;
-  let maxS = DATA.spot * 1.20;
+  // Display range: bracket spot ± CHART_RANGE_PCT, but always include all leg strikes.
+  const pct = CHART_RANGE_PCT / 100;
+  let minS = DATA.spot * (1 - pct);
+  let maxS = DATA.spot * (1 + pct);
   for (const leg of LEGS) {
     if (leg.strike < minS) minS = leg.strike * 0.95;
     if (leg.strike > maxS) maxS = leg.strike * 1.05;
@@ -2485,6 +2520,20 @@ document.getElementById('input-lot').addEventListener('change', (e) => {
 document.getElementById('tmpl-expiry').addEventListener('change', updateTemplateDesc);
 document.getElementById('tmpl-type').addEventListener('change', updateTemplateDesc);
 document.getElementById('tmpl-apply').addEventListener('click', applyTemplate);
+document.querySelectorAll('.range-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const pct = Number(btn.dataset.range);
+    if (pct === CHART_RANGE_PCT) return;
+    CHART_RANGE_PCT = pct;
+    document.querySelectorAll('.range-btn').forEach(b =>
+      b.classList.toggle('active', Number(b.dataset.range) === pct));
+    if (DATA && LEGS.length > 0) {
+      const stats = computeStats();
+      renderSummary(stats);
+      renderChart(stats);
+    }
+  });
+});
 </script>
 </body>
 </html>
