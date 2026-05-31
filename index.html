@@ -719,6 +719,132 @@
     white-space: nowrap;
   }
   .target-warn-btn:hover { filter: brightness(1.15); }
+
+  /* ---------- Strategy templates tab ---------- */
+  .templates-panel {
+    padding: 1.5rem;
+  }
+  .templates-form {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1.3rem;
+  }
+  .templates-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+  .templates-field-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.66rem;
+    color: var(--muted);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+  .templates-select {
+    height: 36px;
+    font-size: 0.85rem;
+  }
+  .templates-desc {
+    background: #0c0d10;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 1rem 1.1rem;
+    margin-bottom: 1.3rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    line-height: 1.55;
+    color: var(--ink);
+    min-height: 120px;
+  }
+  .templates-desc .tmpl-name {
+    font-family: 'Archivo', sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--ink);
+    margin-bottom: 0.3rem;
+  }
+  .templates-desc .tmpl-summary {
+    color: var(--muted);
+    font-size: 0.74rem;
+    margin-bottom: 0.7rem;
+  }
+  .templates-desc .tmpl-atm {
+    color: var(--muted);
+    font-size: 0.7rem;
+    margin-bottom: 0.6rem;
+  }
+  .templates-desc .tmpl-atm-val {
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .templates-desc .tmpl-leg {
+    display: grid;
+    grid-template-columns: 60px 1fr;
+    gap: 0.6rem;
+    padding: 0.25rem 0;
+    align-items: baseline;
+  }
+  .templates-desc .tmpl-leg-act {
+    font-weight: 700;
+    letter-spacing: 0.05em;
+  }
+  .templates-desc .tmpl-leg-act.buy { color: var(--buy); }
+  .templates-desc .tmpl-leg-act.sell { color: var(--sell); }
+  .templates-desc .tmpl-leg-note {
+    color: var(--muted);
+    font-size: 0.72rem;
+    margin-left: 0.3rem;
+  }
+  .templates-apply {
+    background: var(--accent);
+    color: #0c0d10;
+    border: none;
+    padding: 0.85rem 1.5rem;
+    border-radius: 6px;
+    font-family: 'Archivo', sans-serif;
+    font-size: 0.92rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    transition: filter 0.15s;
+    width: 100%;
+  }
+  .templates-apply:hover { filter: brightness(1.12); }
+  .templates-foot {
+    margin-top: 1rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  /* ---------- Chart hover indicator ---------- */
+  .hover-vline {
+    stroke: var(--accent);
+    stroke-width: 1;
+    stroke-dasharray: 3 3;
+    opacity: 0.7;
+  }
+  .hover-dot {
+    fill: var(--accent);
+    stroke: var(--bg);
+    stroke-width: 2;
+  }
+  .hover-tooltip-text {
+    fill: var(--ink);
+    stroke: var(--bg);
+    stroke-width: 4px;
+    paint-order: stroke;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .hover-overlay {
+    fill: transparent;
+    cursor: crosshair;
+  }
 </style>
 </head>
 <body>
@@ -782,6 +908,7 @@
   <nav class="tabs">
     <button class="tab active" data-tab="chain" id="tab-btn-chain" disabled>Option Chain</button>
     <button class="tab" data-tab="builder" id="tab-btn-builder" disabled>Strategy Builder</button>
+    <button class="tab" data-tab="templates" id="tab-btn-templates" disabled>Templates</button>
   </nav>
 
   <main>
@@ -863,6 +990,37 @@
             <svg id="payoff-chart" viewBox="0 0 900 460" preserveAspectRatio="xMidYMid meet"></svg>
           </div>
         </div>
+      </div>
+    </section>
+
+    <section id="tab-templates" class="tab-content">
+      <div id="templates-empty" class="empty-state panel" style="display:block;">
+        <div class="icon">↑</div>
+        Upload a CSV above to use strategy templates.
+      </div>
+      <div id="templates-ready" class="panel templates-panel" style="display:none;">
+        <div class="templates-form">
+          <div class="templates-field">
+            <label class="templates-field-label">Expiry</label>
+            <select class="leg-select templates-select" id="tmpl-expiry"></select>
+          </div>
+          <div class="templates-field">
+            <label class="templates-field-label">Strategy</label>
+            <select class="leg-select templates-select" id="tmpl-type">
+              <option value="bull_call_spread">Bull Call Spread</option>
+              <option value="bull_put_spread">Bull Put Spread</option>
+              <option value="bull_condor">Bull Condor</option>
+              <option value="bull_butterfly">Bull Butterfly</option>
+              <option value="bear_call_spread">Bear Call Spread</option>
+              <option value="bear_put_spread">Bear Put Spread</option>
+              <option value="bear_condor">Bear Condor</option>
+              <option value="bear_butterfly">Bear Butterfly</option>
+            </select>
+          </div>
+        </div>
+        <div class="templates-desc" id="tmpl-desc"></div>
+        <button class="templates-apply" id="tmpl-apply">Apply Template &amp; View in Builder</button>
+        <div class="templates-foot">All strikes are picked from the chosen expiry's chain — closest to a target offset from ATM. Prices default to bid (sell) / ask (buy), editable later in the Builder.</div>
       </div>
     </section>
   </main>
@@ -1120,9 +1278,11 @@ function removeFile(key) {
     resetState();
   } else if (ACTIVE_KEY === key) {
     setActiveFile(remaining2[0]);
+    renderTemplates();
   } else {
     renderExpiryTabs();
     renderBuilder();
+    renderTemplates();
   }
 }
 
@@ -1131,10 +1291,12 @@ function enterLoadedState() {
   document.getElementById('file-loaded').classList.add('active');
   document.getElementById('tab-btn-chain').disabled = false;
   document.getElementById('tab-btn-builder').disabled = false;
+  document.getElementById('tab-btn-templates').disabled = false;
   document.getElementById('chain-empty').style.display = 'none';
   document.getElementById('chain-wrap').style.display = 'block';
   document.getElementById('builder-empty').style.display = 'none';
   document.getElementById('builder-grid').style.display = 'grid';
+  renderTemplates();
 }
 
 function resetState() {
@@ -1148,10 +1310,13 @@ function resetState() {
   document.getElementById('file-loaded').classList.remove('active');
   document.getElementById('tab-btn-chain').disabled = true;
   document.getElementById('tab-btn-builder').disabled = true;
+  document.getElementById('tab-btn-templates').disabled = true;
   document.getElementById('chain-empty').style.display = 'block';
   document.getElementById('chain-wrap').style.display = 'none';
   document.getElementById('builder-empty').style.display = 'block';
   document.getElementById('builder-grid').style.display = 'none';
+  document.getElementById('templates-empty').style.display = 'block';
+  document.getElementById('templates-ready').style.display = 'none';
   switchTab('chain');
 }
 
@@ -1603,6 +1768,211 @@ function renderLegs() {
   });
 }
 
+// ---------- Strategy Templates ----------
+const TEMPLATES = {
+  bull_call_spread: {
+    name: 'Bull Call Spread',
+    summary: 'Bullish debit spread. Pays off if underlying stays above the upper (ATM) strike at expiry. Limited profit, limited loss.',
+    legs: [
+      { action: 'B', offsetPts: -200, type: 'CE', lots: 1, note: 'ITM Call (lower strike)' },
+      { action: 'S', offsetPts: 0,    type: 'CE', lots: 1, note: 'ATM Call (upper strike)' }
+    ]
+  },
+  bull_put_spread: {
+    name: 'Bull Put Spread',
+    summary: 'Bullish credit spread. Net premium received now; keeps the full credit if underlying stays above ATM at expiry.',
+    legs: [
+      { action: 'S', offsetPts: 0,    type: 'PE', lots: 1, note: 'ATM Put (sold for premium)' },
+      { action: 'B', offsetPts: -200, type: 'PE', lots: 1, note: 'OTM Put (bought as protection)' }
+    ]
+  },
+  bear_call_spread: {
+    name: 'Bear Call Spread',
+    summary: 'Bearish credit spread. Net premium received now; keeps the full credit if underlying stays below ATM at expiry.',
+    legs: [
+      { action: 'S', offsetPts: 0,   type: 'CE', lots: 1, note: 'ATM Call (sold for premium)' },
+      { action: 'B', offsetPts: 200, type: 'CE', lots: 1, note: 'OTM Call (bought as protection)' }
+    ]
+  },
+  bear_put_spread: {
+    name: 'Bear Put Spread',
+    summary: 'Bearish debit spread. Pays off if underlying stays below the lower (ATM) strike at expiry. Limited profit, limited loss.',
+    legs: [
+      { action: 'B', offsetPts: 200, type: 'PE', lots: 1, note: 'ITM Put (higher strike)' },
+      { action: 'S', offsetPts: 0,   type: 'PE', lots: 1, note: 'ATM Put (lower strike)' }
+    ]
+  },
+  bull_condor: {
+    name: 'Bull Condor (Long Call Condor)',
+    summary: 'Range-bound bullish play with all-call strikes above ATM. Max profit if underlying lands inside the middle band at expiry.',
+    legs: [
+      { action: 'B', offsetPts: 0,   type: 'CE', lots: 1, note: 'ATM (long, lower wing)' },
+      { action: 'S', offsetPts: 200, type: 'CE', lots: 1, note: 'ATM+200 (short, lower body)' },
+      { action: 'S', offsetPts: 400, type: 'CE', lots: 1, note: 'ATM+400 (short, upper body)' },
+      { action: 'B', offsetPts: 600, type: 'CE', lots: 1, note: 'ATM+600 (long, upper wing)' }
+    ]
+  },
+  bull_butterfly: {
+    name: 'Bull Butterfly (Long Call Butterfly)',
+    summary: 'Bullish pin-strike play, centered at ATM+200. Max profit if underlying lands exactly at the middle strike at expiry.',
+    legs: [
+      { action: 'B', offsetPts: 0,   type: 'CE', lots: 1, note: 'ATM (lower wing)' },
+      { action: 'S', offsetPts: 200, type: 'CE', lots: 2, note: 'ATM+200 × 2 lots (body)' },
+      { action: 'B', offsetPts: 400, type: 'CE', lots: 1, note: 'ATM+400 (upper wing)' }
+    ]
+  },
+  bear_condor: {
+    name: 'Bear Condor (Long Put Condor)',
+    summary: 'Range-bound bearish play with all-put strikes below ATM. Max profit if underlying lands inside the middle band at expiry.',
+    legs: [
+      { action: 'B', offsetPts: 0,    type: 'PE', lots: 1, note: 'ATM (long, upper wing)' },
+      { action: 'S', offsetPts: -200, type: 'PE', lots: 1, note: 'ATM−200 (short, upper body)' },
+      { action: 'S', offsetPts: -400, type: 'PE', lots: 1, note: 'ATM−400 (short, lower body)' },
+      { action: 'B', offsetPts: -600, type: 'PE', lots: 1, note: 'ATM−600 (long, lower wing)' }
+    ]
+  },
+  bear_butterfly: {
+    name: 'Bear Butterfly (Long Put Butterfly)',
+    summary: 'Bearish pin-strike play, centered at ATM−200. Max profit if underlying lands exactly at the middle strike at expiry.',
+    legs: [
+      { action: 'B', offsetPts: 0,    type: 'PE', lots: 1, note: 'ATM (upper wing)' },
+      { action: 'S', offsetPts: -200, type: 'PE', lots: 2, note: 'ATM−200 × 2 lots (body)' },
+      { action: 'B', offsetPts: -400, type: 'PE', lots: 1, note: 'ATM−400 (lower wing)' }
+    ]
+  }
+};
+
+function findAtmStrike(file) {
+  const strikes = file.rows.map(r => r.strike).sort((a, b) => a - b);
+  let atm = strikes[0];
+  let bestDiff = Infinity;
+  for (const k of strikes) {
+    const d = Math.abs(k - file.spot);
+    if (d < bestDiff) { bestDiff = d; atm = k; }
+  }
+  return { atm, strikes };
+}
+
+function closestStrike(strikes, target) {
+  let chosen = strikes[0], bd = Infinity;
+  for (const k of strikes) {
+    const d = Math.abs(k - target);
+    if (d < bd) { bd = d; chosen = k; }
+  }
+  return chosen;
+}
+
+function renderTemplates() {
+  const empty = document.getElementById('templates-empty');
+  const ready = document.getElementById('templates-ready');
+  if (!empty || !ready) return;
+  if (Object.keys(FILES).length === 0) {
+    empty.style.display = 'block';
+    ready.style.display = 'none';
+    return;
+  }
+  empty.style.display = 'none';
+  ready.style.display = 'block';
+
+  // Populate expiry dropdown — preserve user's previous pick if still valid
+  const expSel = document.getElementById('tmpl-expiry');
+  const prevVal = expSel.value;
+  expSel.innerHTML = '';
+  const sortedKeys = Object.keys(FILES).sort((a, b) => compareExpiries(FILES[a], FILES[b]));
+  for (const k of sortedKeys) {
+    const o = document.createElement('option');
+    o.value = k;
+    o.textContent = FILES[k].symbol + ' · ' + FILES[k].expiry;
+    expSel.appendChild(o);
+  }
+  if (FILES[prevVal]) expSel.value = prevVal;
+  else if (FILES[ACTIVE_KEY]) expSel.value = ACTIVE_KEY;
+
+  updateTemplateDesc();
+}
+
+function updateTemplateDesc() {
+  const desc = document.getElementById('tmpl-desc');
+  const typeSel = document.getElementById('tmpl-type');
+  const expSel = document.getElementById('tmpl-expiry');
+  if (!desc || !typeSel || !expSel) return;
+  const t = TEMPLATES[typeSel.value];
+  const file = FILES[expSel.value];
+  if (!t || !file) { desc.textContent = ''; return; }
+
+  const { atm, strikes } = findAtmStrike(file);
+
+  desc.innerHTML = '';
+  const nameDiv = document.createElement('div');
+  nameDiv.className = 'tmpl-name';
+  nameDiv.textContent = t.name;
+  desc.appendChild(nameDiv);
+
+  const summary = document.createElement('div');
+  summary.className = 'tmpl-summary';
+  summary.textContent = t.summary;
+  desc.appendChild(summary);
+
+  const atmLine = document.createElement('div');
+  atmLine.className = 'tmpl-atm';
+  atmLine.innerHTML = 'ATM strike for ' + file.symbol + ' ' + file.expiry + ': <span class="tmpl-atm-val">' + fmt(atm, 0) + '</span>';
+  desc.appendChild(atmLine);
+
+  for (const legDef of t.legs) {
+    const targetStrike = atm + legDef.offsetPts;
+    const chosen = closestStrike(strikes, targetStrike);
+    const row = document.createElement('div');
+    row.className = 'tmpl-leg';
+    const act = document.createElement('span');
+    act.className = 'tmpl-leg-act ' + (legDef.action === 'B' ? 'buy' : 'sell');
+    act.textContent = legDef.action === 'B' ? 'BUY' : 'SELL';
+    row.appendChild(act);
+    const detail = document.createElement('span');
+    const lotTxt = legDef.lots > 1 ? ' × ' + legDef.lots + ' lots' : '';
+    detail.innerHTML = fmt(chosen, 0) + ' ' + legDef.type + lotTxt +
+      '<span class="tmpl-leg-note">— ' + legDef.note + '</span>';
+    row.appendChild(detail);
+    desc.appendChild(row);
+  }
+}
+
+function applyTemplate() {
+  const typeSel = document.getElementById('tmpl-type');
+  const expSel = document.getElementById('tmpl-expiry');
+  const t = TEMPLATES[typeSel.value];
+  const fileKey = expSel.value;
+  const file = FILES[fileKey];
+  if (!t || !file) return;
+
+  if (LEGS.length > 0) {
+    if (!confirm('Replace the existing ' + LEGS.length + ' leg(s) with the ' + t.name + ' template?')) return;
+  }
+
+  const { atm, strikes } = findAtmStrike(file);
+  LEGS = [];
+  for (const legDef of t.legs) {
+    const targetStrike = atm + legDef.offsetPts;
+    const chosen = closestStrike(strikes, targetStrike);
+    LEGS.push({
+      id: ++LEG_ID,
+      fileKey: fileKey,
+      action: legDef.action,
+      strike: chosen,
+      type: legDef.type,
+      lots: legDef.lots,
+      price: defaultPriceForLeg(fileKey, chosen, legDef.type, legDef.action)
+    });
+  }
+
+  // Make sure the option chain tab + builder both show the template's expiry
+  if (ACTIVE_KEY !== fileKey) {
+    setActiveFile(fileKey);
+  } else {
+    renderBuilder();
+  }
+  switchTab('builder');
+}
+
 // ---------- Payoff math ----------
 function legPnL(leg, S_T) {
   const file = FILES[leg.fileKey];
@@ -1989,6 +2359,75 @@ function renderChart(s) {
   });
   oiTitle.textContent = 'Open Interest';
   svg.appendChild(oiTitle);
+
+  // ---- Hover indicator (vertical line + dot + readable values) ----
+  // Group is built first with pointer-events disabled, so the overlay rect on top still receives events.
+  const hoverGroup = el('g', { 'pointer-events': 'none', visibility: 'hidden' });
+  const hoverVLine = el('line', { y1: M.top, y2: M.top + PH, class: 'hover-vline' });
+  hoverGroup.appendChild(hoverVLine);
+  const hoverDot = el('circle', { r: 4, class: 'hover-dot' });
+  hoverGroup.appendChild(hoverDot);
+  const hoverText1 = el('text', { class: 'hover-tooltip-text' });
+  hoverGroup.appendChild(hoverText1);
+  const hoverText2 = el('text', { class: 'hover-tooltip-text' });
+  hoverGroup.appendChild(hoverText2);
+  svg.appendChild(hoverGroup);
+
+  // Transparent overlay receives mouse events.
+  const overlay = el('rect', { x: M.left, y: M.top, width: PW, height: PH, class: 'hover-overlay' });
+  overlay.addEventListener('mousemove', (ev) => {
+    try {
+      const ctm = svg.getScreenCTM();
+      if (!ctm) return;
+      const p = svg.createSVGPoint();
+      p.x = ev.clientX; p.y = ev.clientY;
+      const sp = p.matrixTransform(ctm.inverse());
+      const x = sp.x;
+      if (x < M.left || x > M.left + PW) {
+        hoverGroup.setAttribute('visibility', 'hidden');
+        return;
+      }
+      // Map SVG x → underlying price, find nearest curve point
+      const sValue = minS + ((x - M.left) / PW) * (maxS - minS);
+      let bestIdx = 0, bestDiff = Infinity;
+      for (let i = 0; i < curve.length; i++) {
+        const d = Math.abs(curve[i].s - sValue);
+        if (d < bestDiff) { bestDiff = d; bestIdx = i; }
+      }
+      const hp = curve[bestIdx];
+      const hx = xScale(hp.s);
+      const hy = yScale(hp.p);
+
+      hoverGroup.setAttribute('visibility', 'visible');
+      hoverVLine.setAttribute('x1', hx);
+      hoverVLine.setAttribute('x2', hx);
+      hoverDot.setAttribute('cx', hx);
+      hoverDot.setAttribute('cy', hy);
+
+      // Tooltip flips to the left side when near the right edge of the plot.
+      const flipLeft = hx > M.left + PW - 130;
+      const tx = flipLeft ? hx - 10 : hx + 10;
+      const anchor = flipLeft ? 'end' : 'start';
+      // Keep labels inside the plot area on the Y axis too.
+      const ty1 = Math.max(M.top + 12, Math.min(M.top + PH - 18, hy - 12));
+      const ty2 = ty1 + 16;
+      hoverText1.textContent = 'S  ' + fmt(hp.s, 0);
+      hoverText2.textContent = 'P/L  ' + fmtRupees(hp.p);
+      hoverText1.setAttribute('x', tx);
+      hoverText1.setAttribute('y', ty1);
+      hoverText1.setAttribute('text-anchor', anchor);
+      hoverText2.setAttribute('x', tx);
+      hoverText2.setAttribute('y', ty2);
+      hoverText2.setAttribute('text-anchor', anchor);
+      hoverText2.setAttribute('fill', hp.p >= 0 ? 'var(--pos)' : 'var(--neg)');
+    } catch (err) {
+      hoverGroup.setAttribute('visibility', 'hidden');
+    }
+  });
+  overlay.addEventListener('mouseleave', () => {
+    hoverGroup.setAttribute('visibility', 'hidden');
+  });
+  svg.appendChild(overlay);
 }
 
 function formatPnLAxis(v) {
@@ -2043,6 +2482,9 @@ document.getElementById('input-lot').addEventListener('change', (e) => {
     renderBuilder();
   }
 });
+document.getElementById('tmpl-expiry').addEventListener('change', updateTemplateDesc);
+document.getElementById('tmpl-type').addEventListener('change', updateTemplateDesc);
+document.getElementById('tmpl-apply').addEventListener('click', applyTemplate);
 </script>
 </body>
 </html>
