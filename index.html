@@ -545,6 +545,52 @@
   }
   footer a { color: var(--accent); text-decoration: none; }
   footer a:hover { text-decoration: underline; }
+
+  /* ---------- Expiry chips (multi-file) ---------- */
+  .expiry-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--line);
+  }
+  .expiry-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.4rem 0.5rem 0.4rem 0.8rem;
+    background: #0c0d10;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .expiry-chip:hover { color: var(--ink); border-color: var(--accent-dim); }
+  .expiry-chip.active { color: var(--accent); border-color: var(--accent); background: rgba(240,168,48,0.08); }
+  .expiry-chip-label { display: inline-block; }
+  .expiry-chip-close {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-size: 1.05rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 0.2rem;
+    border-radius: 3px;
+    transition: color 0.15s;
+  }
+  .expiry-chip-close:hover { color: var(--neg); }
+  .expiry-chip.add-chip {
+    border-style: dashed;
+    color: var(--muted);
+    padding: 0.4rem 0.8rem;
+    background: transparent;
+  }
+  .expiry-chip.add-chip:hover { border-color: var(--accent); color: var(--accent); }
 </style>
 </head>
 <body>
@@ -567,12 +613,13 @@
           Pick your index → pick an expiry → click the <strong>Download CSV</strong> link on that page. Then upload it below.
         </p>
         <label class="upload-btn">
-          <input type="file" accept=".csv" id="file-input" hidden>
-          Upload Option Chain CSV
+          <input type="file" accept=".csv" id="file-input" multiple hidden>
+          Upload Option Chain CSV(s)
         </label>
       </div>
 
       <div id="file-loaded">
+        <div class="expiry-tabs" id="expiry-tabs"></div>
         <div class="meta-grid">
           <div class="item">
             <span class="label">Symbol</span>
@@ -722,8 +769,10 @@ const CE_FIELDS = ['oi','chngOi','volume','iv','ltp','chng','bidQty','bid','ask'
 const PE_FIELDS = ['bidQty','bid','ask','askQty','chng','ltp','iv','volume','chngOi','oi'];
 
 // ---------- State ----------
-let DATA = null;   // { symbol, expiry, fileName, rows:[{strike, ce:{...}, pe:{...}}], lotSize, spot }
-let LEGS = [];     // [{ id, action:'B'|'S', strike:Number, type:'CE'|'PE', lots:Number, price:Number }]
+let FILES = {};        // key → { key, symbol, expiry, fileName, rows, lotSize, spot }
+let ACTIVE_KEY = null; // key of the currently active file
+let DATA = null;       // alias of FILES[ACTIVE_KEY] — kept so existing single-file code paths still work
+let LEGS = [];         // [{ id, fileKey, action:'B'|'S', strike:Number, type:'CE'|'PE', lots:Number, price:Number }]
 let LEG_ID = 0;
 
 // ---------- CSV parsing ----------
@@ -804,51 +853,125 @@ function estimateSpot(rows) {
 
 // ---------- File handling ----------
 function onFileSelect(ev) {
-  const file = ev.target.files && ev.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    try {
-      const rows = parseOptionChainCSV(e.target.result);
-      if (rows.length === 0) throw new Error('No strike rows found in the CSV.');
-      const { symbol, expiry } = inferFromFilename(file.name);
-      DATA = {
-        symbol, expiry,
-        fileName: file.name,
-        rows,
-        lotSize: LOT_SIZES[symbol] || 1,
-        spot: estimateSpot(rows)
-      };
-      LEGS = [];
-      enterLoadedState();
-    } catch (err) {
-      alert('Could not parse this CSV. Make sure it is the unmodified NSE option-chain download.\n\nDetails: ' + err.message);
-    }
-  };
-  reader.readAsText(file);
+  const files = Array.from(ev.target.files || []);
+  if (!files.length) return;
+  let processed = 0;
+  const addedKeys = [];
+  files.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const rows = parseOptionChainCSV(e.target.result);
+        if (rows.length === 0) throw new Error('No strike rows found in the CSV.');
+        const { symbol, expiry } = inferFromFilename(file.name);
+        let key = symbol + '__' + expiry;
+        if (symbol === 'UNKNOWN' || expiry === '—') key = key + '__' + file.name;
+        FILES[key] = {
+          key, symbol, expiry,
+          fileName: file.name,
+          rows,
+          lotSize: LOT_SIZES[symbol] || 1,
+          spot: estimateSpot(rows)
+        };
+        addedKeys.push(key);
+      } catch (err) {
+        alert('Could not parse "' + file.name + '". Make sure it is an unmodified NSE option-chain download.\n\nDetails: ' + err.message);
+      }
+      processed++;
+      if (processed === files.length) {
+        if (Object.keys(FILES).length > 0) {
+          enterLoadedState();
+          setActiveFile(addedKeys.length ? addedKeys[addedKeys.length - 1] : ACTIVE_KEY || Object.keys(FILES)[0]);
+        }
+      }
+    };
+    reader.readAsText(file);
+  });
   ev.target.value = '';  // allow re-selecting same file
 }
 
-function enterLoadedState() {
-  document.getElementById('file-empty').style.display = 'none';
-  document.getElementById('file-loaded').classList.add('active');
+function setActiveFile(key) {
+  if (!FILES[key]) return;
+  ACTIVE_KEY = key;
+  DATA = FILES[key];
   document.getElementById('info-symbol').textContent = DATA.symbol;
   document.getElementById('info-expiry').textContent = DATA.expiry;
   document.getElementById('info-file').textContent = DATA.fileName;
   document.getElementById('info-strikes').textContent = DATA.rows.length;
   document.getElementById('input-spot').value = DATA.spot.toFixed(2);
   document.getElementById('input-lot').value = DATA.lotSize;
+  renderExpiryTabs();
+  renderChain();
+  renderBuilder();
+}
+
+function renderExpiryTabs() {
+  const wrap = document.getElementById('expiry-tabs');
+  wrap.innerHTML = '';
+  const keys = Object.keys(FILES);
+  keys.forEach(key => {
+    const f = FILES[key];
+    const chip = document.createElement('div');
+    chip.className = 'expiry-chip' + (key === ACTIVE_KEY ? ' active' : '');
+    chip.title = f.fileName;
+
+    const label = document.createElement('span');
+    label.className = 'expiry-chip-label';
+    label.textContent = f.symbol + ' · ' + f.expiry;
+    label.onclick = () => setActiveFile(key);
+    chip.appendChild(label);
+
+    const close = document.createElement('button');
+    close.className = 'expiry-chip-close';
+    close.textContent = '×';
+    close.title = 'Remove this expiry';
+    close.onclick = (e) => { e.stopPropagation(); removeFile(key); };
+    chip.appendChild(close);
+
+    wrap.appendChild(chip);
+  });
+
+  // "+ Add expiry" trigger (re-uses the same hidden file input)
+  const add = document.createElement('button');
+  add.className = 'expiry-chip add-chip';
+  add.textContent = '+ Add expiry';
+  add.onclick = () => document.getElementById('file-input').click();
+  wrap.appendChild(add);
+}
+
+function removeFile(key) {
+  const legsOnThis = LEGS.filter(l => l.fileKey === key);
+  if (legsOnThis.length > 0) {
+    const ok = confirm(legsOnThis.length + ' leg(s) on this expiry will also be removed. Continue?');
+    if (!ok) return;
+    LEGS = LEGS.filter(l => l.fileKey !== key);
+  }
+  delete FILES[key];
+  const remaining = Object.keys(FILES);
+  if (remaining.length === 0) {
+    resetState();
+  } else if (ACTIVE_KEY === key) {
+    setActiveFile(remaining[0]);
+  } else {
+    renderExpiryTabs();
+    renderBuilder();
+  }
+}
+
+function enterLoadedState() {
+  document.getElementById('file-empty').style.display = 'none';
+  document.getElementById('file-loaded').classList.add('active');
   document.getElementById('tab-btn-chain').disabled = false;
   document.getElementById('tab-btn-builder').disabled = false;
   document.getElementById('chain-empty').style.display = 'none';
   document.getElementById('chain-wrap').style.display = 'block';
   document.getElementById('builder-empty').style.display = 'none';
   document.getElementById('builder-grid').style.display = 'grid';
-  renderChain();
-  renderBuilder();
 }
 
 function resetState() {
+  FILES = {};
+  ACTIVE_KEY = null;
   DATA = null;
   LEGS = [];
   document.getElementById('file-empty').style.display = 'block';
@@ -983,8 +1106,10 @@ function renderChain() {
 }
 
 // ---------- Strategy Builder ----------
-function defaultPriceForLeg(strike, type, action) {
-  const row = DATA.rows.find(r => r.strike === strike);
+function defaultPriceForLeg(fileKey, strike, type, action) {
+  const file = FILES[fileKey];
+  if (!file) return 0;
+  const row = file.rows.find(r => r.strike === strike);
   if (!row) return 0;
   const opt = type === 'CE' ? row.ce : row.pe;
   // Most realistic: buy at ask, sell at bid.
@@ -996,20 +1121,23 @@ function defaultPriceForLeg(strike, type, action) {
 }
 
 function addLeg() {
-  // Default new leg: Buy CE at the ATM strike.
-  let atm = DATA.rows[0].strike;
+  const file = FILES[ACTIVE_KEY];
+  if (!file) return;
+  // Default new leg: Buy CE at the ATM strike of the active file.
+  let atm = file.rows[0].strike;
   let bestDiff = Infinity;
-  for (const r of DATA.rows) {
-    const d = Math.abs(r.strike - DATA.spot);
+  for (const r of file.rows) {
+    const d = Math.abs(r.strike - file.spot);
     if (d < bestDiff) { bestDiff = d; atm = r.strike; }
   }
   const leg = {
     id: ++LEG_ID,
+    fileKey: ACTIVE_KEY,
     action: 'B',
     strike: atm,
     type: 'CE',
     lots: 1,
-    price: defaultPriceForLeg(atm, 'CE', 'B')
+    price: defaultPriceForLeg(ACTIVE_KEY, atm, 'CE', 'B')
   };
   LEGS.push(leg);
   renderBuilder();
@@ -1023,8 +1151,22 @@ function removeLeg(id) {
 function updateLeg(id, field, value) {
   const leg = LEGS.find(l => l.id === id);
   if (!leg) return;
-  const prevAction = leg.action, prevStrike = leg.strike, prevType = leg.type, prevPrice = leg.price;
-  if (field === 'action') leg.action = value;
+  if (field === 'fileKey') {
+    const newFile = FILES[value];
+    if (!newFile) return;
+    leg.fileKey = value;
+    // Snap strike to closest available strike in the new file's chain.
+    const strikes = newFile.rows.map(r => r.strike);
+    if (!strikes.includes(leg.strike)) {
+      let best = strikes[0], bestDiff = Math.abs(strikes[0] - leg.strike);
+      for (const k of strikes) {
+        const d = Math.abs(k - leg.strike);
+        if (d < bestDiff) { bestDiff = d; best = k; }
+      }
+      leg.strike = best;
+    }
+    leg.price = defaultPriceForLeg(leg.fileKey, leg.strike, leg.type, leg.action);
+  } else if (field === 'action') leg.action = value;
   else if (field === 'strike') leg.strike = Number(value);
   else if (field === 'type') leg.type = value;
   else if (field === 'lots') leg.lots = Math.max(1, Number(value) || 1);
@@ -1032,7 +1174,7 @@ function updateLeg(id, field, value) {
 
   // If user changed action/strike/type, re-derive the price (unless price was the explicit edit).
   if (field === 'action' || field === 'strike' || field === 'type') {
-    leg.price = defaultPriceForLeg(leg.strike, leg.type, leg.action);
+    leg.price = defaultPriceForLeg(leg.fileKey, leg.strike, leg.type, leg.action);
   }
   renderBuilder();
 }
@@ -1057,8 +1199,6 @@ function renderLegs() {
     return;
   }
 
-  const strikes = DATA.rows.map(r => r.strike);
-
   LEGS.forEach(leg => {
     const row = document.createElement('div');
     row.className = 'leg-row';
@@ -1071,13 +1211,23 @@ function renderLegs() {
     bs.onclick = () => updateLeg(leg.id, 'action', leg.action === 'B' ? 'S' : 'B');
     row.appendChild(bs);
 
-    // Expiry (fixed display, since CSV is a single expiry)
-    const exp = document.createElement('div');
-    exp.style.cssText = 'font-family: "JetBrains Mono", monospace; font-size: 0.72rem; color: var(--muted); text-align: center;';
-    exp.textContent = DATA.expiry.split(' ').slice(0, 2).join(' ');
+    // Expiry select (one option per loaded file)
+    const exp = document.createElement('select');
+    exp.className = 'leg-select';
+    Object.values(FILES).forEach(f => {
+      const o = document.createElement('option');
+      o.value = f.key;
+      const parts = f.expiry.split(' ');
+      o.textContent = parts.length >= 2 ? (parts[0] + ' ' + parts[1]) : f.expiry;
+      if (f.key === leg.fileKey) o.selected = true;
+      exp.appendChild(o);
+    });
+    exp.onchange = () => updateLeg(leg.id, 'fileKey', exp.value);
     row.appendChild(exp);
 
-    // Strike select
+    // Strike select — strikes come from the leg's own file (not necessarily the active file)
+    const legFile = FILES[leg.fileKey];
+    const strikes = legFile ? legFile.rows.map(r => r.strike) : [];
     const strike = document.createElement('select');
     strike.className = 'leg-select';
     strikes.forEach(k => {
@@ -1131,18 +1281,20 @@ function renderLegs() {
 }
 
 // ---------- Payoff math ----------
-function legPnL(leg, S_T, lotSize) {
+function legPnL(leg, S_T) {
+  const file = FILES[leg.fileKey];
+  if (!file) return 0;
   let intrinsic;
   if (leg.type === 'CE') intrinsic = Math.max(S_T - leg.strike, 0);
   else intrinsic = Math.max(leg.strike - S_T, 0);
-  const qty = leg.lots * lotSize;
+  const qty = leg.lots * file.lotSize;
   if (leg.action === 'B') return qty * (intrinsic - leg.price);
   else return qty * (leg.price - intrinsic);
 }
 
 function totalPnL(S_T) {
   let sum = 0;
-  for (const leg of LEGS) sum += legPnL(leg, S_T, DATA.lotSize);
+  for (const leg of LEGS) sum += legPnL(leg, S_T);
   return sum;
 }
 
@@ -1185,7 +1337,9 @@ function computeStats() {
   // dP&L/dS_T at S → 0 (downside): only PE legs (slope contribution = -qty for buy, +qty for sell)
   let upSlope = 0, downSlope = 0;
   for (const leg of LEGS) {
-    const qty = leg.lots * DATA.lotSize;
+    const file = FILES[leg.fileKey];
+    if (!file) continue;
+    const qty = leg.lots * file.lotSize;
     const sgn = leg.action === 'B' ? 1 : -1;
     if (leg.type === 'CE') upSlope += sgn * qty;
     if (leg.type === 'PE') downSlope -= sgn * qty;  // dP&L/dS_T contribution
@@ -1214,7 +1368,9 @@ function computeStats() {
   // Net premium (positive = credit received, negative = debit paid).
   let netPremium = 0;
   for (const leg of LEGS) {
-    const qty = leg.lots * DATA.lotSize;
+    const file = FILES[leg.fileKey];
+    if (!file) continue;
+    const qty = leg.lots * file.lotSize;
     const sgn = leg.action === 'B' ? -1 : 1;
     netPremium += sgn * qty * leg.price;
   }
@@ -1536,13 +1692,15 @@ document.getElementById('add-leg-btn').addEventListener('click', addLeg);
 document.getElementById('clear-legs').addEventListener('click', () => { LEGS = []; renderBuilder(); });
 document.getElementById('input-spot').addEventListener('change', (e) => {
   const v = Number(e.target.value);
-  if (isFinite(v) && v > 0) { DATA.spot = v; renderChain(); renderBuilder(); }
+  if (DATA && isFinite(v) && v > 0) { DATA.spot = v; renderChain(); renderBuilder(); }
 });
 document.getElementById('input-lot').addEventListener('change', (e) => {
   const v = Math.max(1, Math.round(Number(e.target.value) || 1));
-  DATA.lotSize = v;
-  e.target.value = v;
-  renderBuilder();
+  if (DATA) {
+    DATA.lotSize = v;
+    e.target.value = v;
+    renderBuilder();
+  }
 });
 </script>
 </body>
