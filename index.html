@@ -350,7 +350,7 @@
 
   .leg-col-header {
     display: grid;
-    grid-template-columns: 36px 64px 1fr 60px 60px 1fr 32px;
+    grid-template-columns: 36px 88px 1fr 60px 60px 1fr 32px;
     gap: 0.5rem;
     padding: 0.5rem 1rem;
     background: #0c0d10;
@@ -369,7 +369,7 @@
 
   .leg-row {
     display: grid;
-    grid-template-columns: 36px 64px 1fr 60px 60px 1fr 32px;
+    grid-template-columns: 36px 88px 1fr 60px 60px 1fr 32px;
     gap: 0.5rem;
     padding: 0.4rem 0;
     align-items: center;
@@ -591,6 +591,134 @@
     background: transparent;
   }
   .expiry-chip.add-chip:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ---------- Target date + past underlying (calendar handling) ---------- */
+  .target-section {
+    border-top: 1px solid var(--line);
+    padding: 0.9rem 1.2rem;
+    background: #101116;
+  }
+  .target-head {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+  }
+  .target-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.62rem;
+    color: var(--muted);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    flex-shrink: 0;
+  }
+  .target-select {
+    flex: 1;
+    height: 32px;
+    font-size: 0.78rem;
+  }
+  .target-sub {
+    margin-top: 0.7rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.62rem;
+    color: var(--muted);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+  .past-row {
+    margin-top: 0.55rem;
+    padding-top: 0.5rem;
+    border-top: 1px dashed var(--line);
+  }
+  .past-row.first { border-top: none; padding-top: 0; }
+  .past-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.74rem;
+    color: var(--ink);
+    margin-bottom: 0.35rem;
+  }
+  .past-controls {
+    display: grid;
+    grid-template-columns: 1fr 84px 64px;
+    gap: 0.5rem;
+    align-items: center;
+  }
+  .past-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 4px;
+    background: var(--line);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+  }
+  .past-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    background: var(--accent);
+    border-radius: 50%;
+    border: 2px solid var(--bg);
+    cursor: pointer;
+    transition: transform 0.1s;
+  }
+  .past-slider::-webkit-slider-thumb:hover { transform: scale(1.15); }
+  .past-slider::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    background: var(--accent);
+    border: 2px solid var(--bg);
+    border-radius: 50%;
+    cursor: pointer;
+  }
+  .past-input {
+    background: #0c0d10;
+    border: 1px solid var(--line);
+    color: var(--ink);
+    height: 28px;
+    padding: 0 0.5rem;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    text-align: right;
+    width: 100%;
+    -moz-appearance: textfield;
+  }
+  .past-input::-webkit-outer-spin-button,
+  .past-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .past-input:focus { outline: none; border-color: var(--accent); }
+  .past-pct {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .target-warn {
+    margin-top: 0.8rem;
+    padding: 0.55rem 0.7rem;
+    background: rgba(224,100,79,0.08);
+    border: 1px solid rgba(224,100,79,0.3);
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--neg);
+    line-height: 1.5;
+  }
+  .target-warn-btn {
+    background: var(--neg);
+    color: #0c0d10;
+    border: none;
+    padding: 0.3rem 0.6rem;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    font-weight: 700;
+    cursor: pointer;
+    margin-left: 0.4rem;
+    white-space: nowrap;
+  }
+  .target-warn-btn:hover { filter: brightness(1.15); }
 </style>
 </head>
 <body>
@@ -696,6 +824,7 @@
           <div class="add-leg-row">
             <button class="add-leg-btn" id="add-leg-btn">+ Add leg</button>
           </div>
+          <div class="target-section" id="target-section" style="display:none;"></div>
           <div class="summary" id="summary">
             <div class="stat">
               <span class="label">Max Profit</span>
@@ -774,6 +903,9 @@ let ACTIVE_KEY = null; // key of the currently active file
 let DATA = null;       // alias of FILES[ACTIVE_KEY] — kept so existing single-file code paths still work
 let LEGS = [];         // [{ id, fileKey, action:'B'|'S', strike:Number, type:'CE'|'PE', lots:Number, price:Number }]
 let LEG_ID = 0;
+// Calendar-handling state:
+let TARGET_KEY = null;       // file key of the "target date" — payoff x-axis is underlying at this expiry
+let PAST_UNDERLYINGS = {};   // fileKey → underlying value at THAT expiry (for legs earlier than target)
 
 // ---------- CSV parsing ----------
 function parseCSVLine(line) {
@@ -802,6 +934,18 @@ function parseNum(s) {
   if (t === '' || t === '-') return null;
   const n = Number(t.replace(/,/g, ''));
   return isFinite(n) ? n : null;
+}
+
+// ---------- Expiry comparison (for multi-expiry target date logic) ----------
+const _MONTHS = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+function parseExpiry(s) {
+  const m = String(s || '').match(/(\d+)\s+([A-Za-z]+)\s+(\d+)/);
+  if (!m) return new Date(0);
+  const mo = _MONTHS[m[2].toLowerCase().slice(0, 3)];
+  return new Date(parseInt(m[3], 10), mo == null ? 0 : mo, parseInt(m[1], 10));
+}
+function compareExpiries(a, b) {
+  return parseExpiry(a.expiry).getTime() - parseExpiry(b.expiry).getTime();
 }
 
 function parseOptionChainCSV(text) {
@@ -880,6 +1024,17 @@ function onFileSelect(ev) {
       processed++;
       if (processed === files.length) {
         if (Object.keys(FILES).length > 0) {
+          // Initialize TARGET_KEY to nearest (earliest) expiry on first load; keep existing pick otherwise.
+          if (!TARGET_KEY || !FILES[TARGET_KEY]) {
+            const sortedKs = Object.keys(FILES).sort((a, b) => compareExpiries(FILES[a], FILES[b]));
+            TARGET_KEY = sortedKs[0];
+          }
+          // Default past-underlying for any non-target file that is earlier than the target
+          for (const k of Object.keys(FILES)) {
+            if (k !== TARGET_KEY && compareExpiries(FILES[k], FILES[TARGET_KEY]) < 0 && PAST_UNDERLYINGS[k] == null) {
+              PAST_UNDERLYINGS[k] = FILES[k].spot;
+            }
+          }
           enterLoadedState();
           setActiveFile(addedKeys.length ? addedKeys[addedKeys.length - 1] : ACTIVE_KEY || Object.keys(FILES)[0]);
         }
@@ -947,11 +1102,24 @@ function removeFile(key) {
     LEGS = LEGS.filter(l => l.fileKey !== key);
   }
   delete FILES[key];
-  const remaining = Object.keys(FILES);
-  if (remaining.length === 0) {
+  delete PAST_UNDERLYINGS[key];
+  // If we removed the target, re-pick it as the nearest of the remaining files
+  if (TARGET_KEY === key) {
+    const remaining = Object.keys(FILES).sort((a, b) => compareExpiries(FILES[a], FILES[b]));
+    TARGET_KEY = remaining[0] || null;
+    if (TARGET_KEY) {
+      for (const k of remaining) {
+        if (k !== TARGET_KEY && compareExpiries(FILES[k], FILES[TARGET_KEY]) < 0 && PAST_UNDERLYINGS[k] == null) {
+          PAST_UNDERLYINGS[k] = FILES[k].spot;
+        }
+      }
+    }
+  }
+  const remaining2 = Object.keys(FILES);
+  if (remaining2.length === 0) {
     resetState();
   } else if (ACTIVE_KEY === key) {
-    setActiveFile(remaining[0]);
+    setActiveFile(remaining2[0]);
   } else {
     renderExpiryTabs();
     renderBuilder();
@@ -974,6 +1142,8 @@ function resetState() {
   ACTIVE_KEY = null;
   DATA = null;
   LEGS = [];
+  TARGET_KEY = null;
+  PAST_UNDERLYINGS = {};
   document.getElementById('file-empty').style.display = 'block';
   document.getElementById('file-loaded').classList.remove('active');
   document.getElementById('tab-btn-chain').disabled = true;
@@ -1182,9 +1352,162 @@ function updateLeg(id, field, value) {
 function renderBuilder() {
   if (!DATA) return;
   renderLegs();
+  renderTargetSection();
   const stats = computeStats();
   renderSummary(stats);
   renderChart(stats);
+}
+
+function renderTargetSection() {
+  const wrap = document.getElementById('target-section');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+
+  const keys = Object.keys(FILES);
+  // Single-file mode: target is implicit. Hide the whole section to keep the UI clean.
+  if (keys.length <= 1) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+
+  // Target Date selector
+  const head = document.createElement('div');
+  head.className = 'target-head';
+  const lbl = document.createElement('span');
+  lbl.className = 'target-label';
+  lbl.textContent = 'Target Date';
+  head.appendChild(lbl);
+
+  const sel = document.createElement('select');
+  sel.className = 'leg-select target-select';
+  const sortedKeys = keys.slice().sort((a, b) => compareExpiries(FILES[a], FILES[b]));
+  for (const k of sortedKeys) {
+    const o = document.createElement('option');
+    o.value = k;
+    o.textContent = FILES[k].symbol + ' · ' + FILES[k].expiry;
+    if (k === TARGET_KEY) o.selected = true;
+    sel.appendChild(o);
+  }
+  sel.onchange = () => {
+    TARGET_KEY = sel.value;
+    for (const k of Object.keys(FILES)) {
+      if (k !== TARGET_KEY && compareExpiries(FILES[k], FILES[TARGET_KEY]) < 0 && PAST_UNDERLYINGS[k] == null) {
+        PAST_UNDERLYINGS[k] = FILES[k].spot;
+      }
+    }
+    renderBuilder();
+  };
+  head.appendChild(sel);
+  wrap.appendChild(head);
+
+  // Past underlying inputs (only for expiries earlier than the target)
+  const pastKeys = sortedKeys.filter(k => k !== TARGET_KEY && TARGET_KEY && compareExpiries(FILES[k], FILES[TARGET_KEY]) < 0);
+  if (pastKeys.length > 0) {
+    const sub = document.createElement('div');
+    sub.className = 'target-sub';
+    sub.textContent = 'Settled underlying at past expiries';
+    wrap.appendChild(sub);
+
+    pastKeys.forEach((k, i) => {
+      const file = FILES[k];
+      const cur = PAST_UNDERLYINGS[k] != null ? PAST_UNDERLYINGS[k] : file.spot;
+      const ref = file.spot;
+
+      const row = document.createElement('div');
+      row.className = 'past-row' + (i === 0 ? ' first' : '');
+
+      const lab = document.createElement('div');
+      lab.className = 'past-label';
+      lab.textContent = file.symbol + ' on ' + file.expiry;
+      row.appendChild(lab);
+
+      const controls = document.createElement('div');
+      controls.className = 'past-controls';
+
+      const slider = document.createElement('input');
+      slider.type = 'range';
+      slider.className = 'past-slider';
+      slider.min = Math.max(0, ref * 0.75).toFixed(2);
+      slider.max = (ref * 1.25).toFixed(2);
+      slider.step = '0.05';
+      slider.value = cur.toFixed(2);
+
+      const num = document.createElement('input');
+      num.type = 'number';
+      num.className = 'past-input';
+      num.step = '0.05';
+      num.value = cur.toFixed(2);
+
+      const pct = document.createElement('span');
+      pct.className = 'past-pct';
+      const updatePct = (v) => {
+        const p = ref > 0 ? ((v - ref) / ref) * 100 : 0;
+        pct.textContent = (p >= 0 ? '+' : '') + p.toFixed(2) + '%';
+        pct.style.color = p >= 0 ? 'var(--pos)' : 'var(--neg)';
+      };
+      updatePct(cur);
+
+      // Drag = partial re-render (chart + summary only) so the slider keeps focus.
+      slider.oninput = () => {
+        const v = Number(slider.value);
+        PAST_UNDERLYINGS[k] = v;
+        num.value = v.toFixed(2);
+        updatePct(v);
+        const stats = computeStats();
+        renderSummary(stats);
+        renderChart(stats);
+      };
+      // Number input commit = full re-render.
+      num.onchange = () => {
+        const v = Math.max(0, Number(num.value) || 0);
+        PAST_UNDERLYINGS[k] = v;
+        slider.value = v.toFixed(2);
+        updatePct(v);
+        const stats = computeStats();
+        renderSummary(stats);
+        renderChart(stats);
+      };
+
+      controls.appendChild(slider);
+      controls.appendChild(num);
+      controls.appendChild(pct);
+      row.appendChild(controls);
+      wrap.appendChild(row);
+    });
+  }
+
+  // Warning + one-click fix when any leg has expiry later than target
+  const futureLegs = LEGS.filter(l => {
+    if (!l.fileKey || !FILES[l.fileKey] || !TARGET_KEY || !FILES[TARGET_KEY]) return false;
+    return compareExpiries(FILES[l.fileKey], FILES[TARGET_KEY]) > 0;
+  });
+  if (futureLegs.length > 0) {
+    const warn = document.createElement('div');
+    warn.className = 'target-warn';
+    const txt = document.createElement('span');
+    txt.innerHTML = '⚠ ' + futureLegs.length + ' leg(s) live at expiry <strong>later</strong> than the target date — they cannot be settled at expiry from this target without forward pricing, so the curve is approximate. ';
+    warn.appendChild(txt);
+
+    // Find the latest leg expiry to suggest as the new target.
+    let latestKey = null;
+    for (const l of futureLegs) {
+      if (!latestKey || compareExpiries(FILES[l.fileKey], FILES[latestKey]) > 0) latestKey = l.fileKey;
+    }
+    if (latestKey) {
+      const btn = document.createElement('button');
+      btn.className = 'target-warn-btn';
+      btn.textContent = 'Switch to ' + FILES[latestKey].expiry;
+      btn.onclick = () => {
+        TARGET_KEY = latestKey;
+        for (const k of Object.keys(FILES)) {
+          if (k !== TARGET_KEY && compareExpiries(FILES[k], FILES[TARGET_KEY]) < 0 && PAST_UNDERLYINGS[k] == null) {
+            PAST_UNDERLYINGS[k] = FILES[k].spot;
+          }
+        }
+        renderBuilder();
+      };
+      warn.appendChild(btn);
+    }
+    wrap.appendChild(warn);
+  }
 }
 
 function renderLegs() {
@@ -1284,9 +1607,22 @@ function renderLegs() {
 function legPnL(leg, S_T) {
   const file = FILES[leg.fileKey];
   if (!file) return 0;
+
+  // Pick the underlying price at THIS leg's expiry, relative to the target date.
+  //  - leg expiry == target  → varies with x-axis (S_T)
+  //  - leg expiry <  target  → already settled at PAST_UNDERLYINGS[leg.fileKey] (user-set)
+  //  - leg expiry >  target  → not strictly knowable without forward pricing; fall back to S_T (warned in UI)
+  let S_at = S_T;
+  if (TARGET_KEY && FILES[TARGET_KEY] && leg.fileKey !== TARGET_KEY) {
+    const cmp = compareExpiries(file, FILES[TARGET_KEY]);
+    if (cmp < 0) {
+      S_at = PAST_UNDERLYINGS[leg.fileKey] != null ? PAST_UNDERLYINGS[leg.fileKey] : file.spot;
+    }
+  }
+
   let intrinsic;
-  if (leg.type === 'CE') intrinsic = Math.max(S_T - leg.strike, 0);
-  else intrinsic = Math.max(leg.strike - S_T, 0);
+  if (leg.type === 'CE') intrinsic = Math.max(S_at - leg.strike, 0);
+  else intrinsic = Math.max(leg.strike - S_at, 0);
   const qty = leg.lots * file.lotSize;
   if (leg.action === 'B') return qty * (intrinsic - leg.price);
   else return qty * (leg.price - intrinsic);
@@ -1335,10 +1671,14 @@ function computeStats() {
   // Asymptotic slopes detect unbounded payoff.
   // dP&L/dS_T at S → +∞: only CE legs matter (slope contribution = +qty for buy, -qty for sell)
   // dP&L/dS_T at S → 0 (downside): only PE legs (slope contribution = -qty for buy, +qty for sell)
+  // Past-expiry legs are fixed (don't vary with S_T), so they don't contribute.
   let upSlope = 0, downSlope = 0;
   for (const leg of LEGS) {
     const file = FILES[leg.fileKey];
     if (!file) continue;
+    // Skip past-expiry legs (their P&L is locked at PAST_UNDERLYINGS[fileKey])
+    if (TARGET_KEY && FILES[TARGET_KEY] && leg.fileKey !== TARGET_KEY &&
+        compareExpiries(file, FILES[TARGET_KEY]) < 0) continue;
     const qty = leg.lots * file.lotSize;
     const sgn = leg.action === 'B' ? 1 : -1;
     if (leg.type === 'CE') upSlope += sgn * qty;
@@ -1631,8 +1971,9 @@ function renderChart(s) {
   svg.appendChild(el('line', { x1: M.left, x2: M.left + PW, y1: M.top + PH, y2: M.top + PH, class: 'axis-line' }));
 
   // Axis titles
+  const targetExpiryStr = (TARGET_KEY && FILES[TARGET_KEY]) ? FILES[TARGET_KEY].expiry : 'expiry';
   const xTitle = el('text', { x: M.left + PW / 2, y: H - 8, 'text-anchor': 'middle', class: 'axis-label' });
-  xTitle.textContent = 'Underlying at expiry';
+  xTitle.textContent = 'Underlying at ' + targetExpiryStr;
   svg.appendChild(xTitle);
 
   const yTitle = el('text', {
