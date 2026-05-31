@@ -1,0 +1,1549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Options Lab · NSE F&amp;O Strategy Builder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0c0d10;
+    --panel: #14161b;
+    --panel-2: #181a20;
+    --line: #23262e;
+    --line-soft: rgba(35,38,46,0.6);
+    --ink: #e8e6df;
+    --muted: #8b8f99;
+    --accent: #f0a830;
+    --accent-dim: #6b4d18;
+    --accent-soft: rgba(240,168,48,0.12);
+    --pos: #4cb782;
+    --pos-soft: rgba(76,183,130,0.15);
+    --neg: #e0644f;
+    --neg-soft: rgba(224,100,79,0.15);
+    --buy: #4cb782;
+    --sell: #e0644f;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Archivo', sans-serif;
+    background:
+      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(240,168,48,0.07), transparent 60%),
+      var(--bg);
+    background-image:
+      linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size: 100% 100%, 44px 44px, 44px 44px;
+    color: var(--ink);
+    min-height: 100vh;
+    padding: clamp(1rem, 3vw, 3rem);
+  }
+
+  .wrap { max-width: 1440px; margin: 0 auto; }
+
+  /* ---------- Header ---------- */
+  header {
+    border: 1px solid var(--line);
+    background: linear-gradient(180deg, var(--panel), #101116);
+    border-radius: 14px;
+    padding: clamp(1.25rem, 3vw, 2rem);
+    margin-bottom: 1.25rem;
+    position: relative;
+    overflow: hidden;
+  }
+  header::before {
+    content: "";
+    position: absolute; inset: 0 auto 0 0; width: 4px;
+    background: linear-gradient(180deg, var(--accent), transparent);
+  }
+  .eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 0.6rem;
+  }
+  h1 {
+    font-weight: 800;
+    font-size: clamp(1.5rem, 4vw, 2.4rem);
+    letter-spacing: -0.02em;
+    line-height: 1.05;
+    margin-bottom: 0.6rem;
+  }
+  .subtitle {
+    color: var(--muted);
+    font-size: 0.95rem;
+    margin-bottom: 1.4rem;
+    max-width: 56ch;
+  }
+
+  /* ---------- File bar ---------- */
+  .file-bar { border-top: 1px solid var(--line); padding-top: 1.2rem; margin-top: 1rem; }
+
+  #file-empty .nse-line {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    color: var(--ink);
+    margin-bottom: 0.4rem;
+  }
+  #file-empty .nse-line a {
+    color: var(--accent);
+    text-decoration: none;
+    border-bottom: 1px dotted var(--accent-dim);
+  }
+  #file-empty .nse-line a:hover { border-bottom-color: var(--accent); }
+  #file-empty .hint {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.74rem;
+    color: var(--muted);
+    margin-bottom: 1rem;
+  }
+
+  .upload-btn {
+    display: inline-block;
+    background: var(--accent);
+    color: #0c0d10;
+    padding: 0.7rem 1.4rem;
+    border-radius: 8px;
+    font-family: 'Archivo', sans-serif;
+    font-weight: 700;
+    font-size: 0.9rem;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    border: none;
+    transition: background 0.15s;
+  }
+  .upload-btn:hover { background: #ffbb44; }
+
+  #file-loaded { display: none; }
+  #file-loaded.active { display: block; }
+
+  .meta-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 1rem 1.6rem;
+    align-items: end;
+    margin-bottom: 0.6rem;
+  }
+  .meta-grid .item .label {
+    color: var(--muted);
+    display: block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.66rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 0.35rem;
+  }
+  .meta-grid .item .value {
+    color: var(--ink);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.92rem;
+    font-weight: 500;
+  }
+  .meta-grid .item .value.big {
+    color: var(--accent);
+    font-size: 1.15rem;
+    font-weight: 700;
+  }
+  .meta-grid .item input {
+    width: 100%;
+    background: #0c0d10;
+    border: 1px solid var(--line);
+    color: var(--ink);
+    padding: 0.45rem 0.6rem;
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.9rem;
+    transition: border-color 0.15s;
+  }
+  .meta-grid .item input:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+  .replace-btn {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--line);
+    padding: 0.45rem 0.9rem;
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    cursor: pointer;
+    margin-top: 0.4rem;
+    transition: all 0.15s;
+  }
+  .replace-btn:hover { color: var(--accent); border-color: var(--accent-dim); }
+
+  /* ---------- Tabs ---------- */
+  .tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 1.25rem;
+    border-bottom: 1px solid var(--line);
+  }
+  .tab {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-family: 'Archivo', sans-serif;
+    font-weight: 600;
+    font-size: 0.95rem;
+    padding: 0.85rem 1.4rem;
+    cursor: pointer;
+    position: relative;
+    transition: color 0.15s;
+    letter-spacing: -0.01em;
+  }
+  .tab:hover { color: var(--ink); }
+  .tab.active { color: var(--accent); }
+  .tab.active::after {
+    content: "";
+    position: absolute;
+    left: 0; right: 0; bottom: -1px;
+    height: 2px;
+    background: var(--accent);
+  }
+  .tab[disabled] { opacity: 0.35; cursor: not-allowed; }
+
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* ---------- Panel ---------- */
+  .panel {
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: var(--panel);
+    overflow: hidden;
+  }
+  .panel-title {
+    padding: 0.9rem 1.2rem;
+    border-bottom: 1px solid var(--line);
+    background: #101116;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--muted);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+  .scroll { overflow-x: auto; }
+
+  /* ---------- Empty state ---------- */
+  .empty-state {
+    padding: 3rem 1.5rem;
+    text-align: center;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    line-height: 1.7;
+  }
+  .empty-state .icon {
+    font-size: 2rem;
+    color: var(--accent-dim);
+    margin-bottom: 0.6rem;
+  }
+
+  /* ---------- Option chain table ---------- */
+  #chain-table { border-collapse: collapse; width: 100%; min-width: 1100px; }
+  #chain-table thead th {
+    position: sticky; top: 0;
+    background: #101116;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.62rem;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    text-align: right;
+    padding: 0.7rem 0.6rem;
+    border-bottom: 1px solid var(--line);
+    white-space: nowrap;
+    z-index: 2;
+  }
+  #chain-table thead th.strike-col {
+    text-align: center;
+    color: var(--accent);
+    border-left: 1px solid var(--line);
+    border-right: 1px solid var(--line);
+    background: #14161b;
+  }
+  #chain-table thead .section-row th {
+    padding: 0.5rem 0.6rem;
+    font-size: 0.66rem;
+    letter-spacing: 0.18em;
+    color: var(--ink);
+    text-align: center;
+    background: #0c0d10;
+    border-bottom: none;
+  }
+  #chain-table thead .section-row .calls-section { color: var(--neg); }
+  #chain-table thead .section-row .puts-section { color: var(--pos); }
+  #chain-table tbody td {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.76rem;
+    text-align: right;
+    padding: 0.5rem 0.6rem;
+    border-bottom: 1px solid var(--line-soft);
+    color: var(--ink);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  #chain-table tbody td.strike-cell {
+    text-align: center;
+    color: var(--accent);
+    font-weight: 700;
+    background: #101116;
+    border-left: 1px solid var(--line);
+    border-right: 1px solid var(--line);
+  }
+  #chain-table tbody td.itm { background: rgba(240,168,48,0.04); }
+  #chain-table tbody tr.atm td { background: rgba(240,168,48,0.10); border-bottom-color: var(--accent-dim); }
+  #chain-table tbody tr.atm td.strike-cell { background: rgba(240,168,48,0.16); color: var(--accent); }
+  #chain-table tbody tr:hover td { background: #181a20; }
+  #chain-table tbody tr:hover td.strike-cell { background: #1c1e25; }
+  #chain-table tbody tr.atm:hover td { background: rgba(240,168,48,0.16); }
+  #chain-table tbody td.dash { color: var(--muted); }
+  #chain-table tbody td.chg-pos { color: var(--pos); }
+  #chain-table tbody td.chg-neg { color: var(--neg); }
+
+  /* ---------- Strategy Builder ---------- */
+  .builder-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 520px) minmax(0, 1fr);
+    gap: 1.25rem;
+    align-items: start;
+  }
+  @media (max-width: 1050px) {
+    .builder-grid { grid-template-columns: 1fr; }
+  }
+
+  .legs-panel { padding: 0; }
+  .legs-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.9rem 1.2rem;
+    border-bottom: 1px solid var(--line);
+    background: #101116;
+  }
+  .legs-header .title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--muted);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+  .legs-header .clear {
+    background: transparent;
+    color: var(--muted);
+    border: none;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    cursor: pointer;
+    transition: color 0.15s;
+  }
+  .legs-header .clear:hover { color: var(--neg); }
+
+  .leg-col-header {
+    display: grid;
+    grid-template-columns: 36px 64px 1fr 60px 60px 1fr 32px;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: #0c0d10;
+    border-bottom: 1px solid var(--line);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.62rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+  .leg-col-header span { text-align: center; }
+  .leg-col-header span:nth-child(3) { text-align: left; padding-left: 4px; }
+  .leg-col-header span:nth-child(6) { text-align: right; padding-right: 4px; }
+
+  .legs-list { padding: 0.4rem 1rem 0.8rem; min-height: 60px; }
+
+  .leg-row {
+    display: grid;
+    grid-template-columns: 36px 64px 1fr 60px 60px 1fr 32px;
+    gap: 0.5rem;
+    padding: 0.4rem 0;
+    align-items: center;
+  }
+
+  .leg-bs {
+    border: none;
+    border-radius: 6px;
+    height: 36px;
+    font-family: 'Archivo', sans-serif;
+    font-weight: 800;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .leg-bs.buy { background: rgba(76,183,130,0.15); color: var(--buy); }
+  .leg-bs.sell { background: rgba(224,100,79,0.15); color: var(--sell); }
+  .leg-bs:hover { filter: brightness(1.2); }
+
+  .leg-input, .leg-select {
+    background: #0c0d10;
+    border: 1px solid var(--line);
+    color: var(--ink);
+    height: 36px;
+    padding: 0 0.55rem;
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    width: 100%;
+    transition: border-color 0.15s;
+  }
+  .leg-input:focus, .leg-select:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+  .leg-input[type=number] {
+    text-align: right;
+    -moz-appearance: textfield;
+  }
+  .leg-input[type=number]::-webkit-outer-spin-button,
+  .leg-input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+  .leg-select { appearance: none; padding-right: 1.4rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5L6 7.5L9 4.5' stroke='%238b8f99' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.4rem center;
+    background-size: 12px 12px;
+  }
+
+  .leg-del {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-size: 1.1rem;
+    cursor: pointer;
+    height: 36px;
+    border-radius: 6px;
+    transition: all 0.15s;
+  }
+  .leg-del:hover { background: rgba(224,100,79,0.15); color: var(--neg); }
+
+  .add-leg-row { padding: 0 1rem 1rem; }
+  .add-leg-btn {
+    width: 100%;
+    background: transparent;
+    border: 1px dashed var(--line);
+    color: var(--muted);
+    padding: 0.7rem;
+    border-radius: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .add-leg-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Summary */
+  .summary {
+    border-top: 1px solid var(--line);
+    background: #101116;
+    padding: 1.2rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem 1.6rem;
+  }
+  .summary .stat .label {
+    display: block;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.62rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    margin-bottom: 0.3rem;
+  }
+  .summary .stat .value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--ink);
+  }
+  .summary .stat .value.pos { color: var(--pos); }
+  .summary .stat .value.neg { color: var(--neg); }
+  .summary .stat .value.accent { color: var(--accent); }
+  .summary .stat .sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--muted);
+    margin-top: 0.15rem;
+  }
+
+  /* Chart */
+  .chart-panel { padding: 0; }
+  .chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.9rem 1.2rem;
+    border-bottom: 1px solid var(--line);
+    background: #101116;
+  }
+  .chart-header .title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--muted);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+  .chart-legend {
+    display: flex;
+    gap: 1rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--muted);
+  }
+  .chart-legend .dot {
+    display: inline-block;
+    width: 8px; height: 8px;
+    border-radius: 2px;
+    margin-right: 0.35rem;
+    vertical-align: middle;
+  }
+  .chart-legend .dot.call-oi { background: var(--neg); opacity: 0.6; }
+  .chart-legend .dot.put-oi { background: var(--pos); opacity: 0.6; }
+  .chart-legend .dot.payoff { background: var(--accent); }
+
+  .chart-box { padding: 0.8rem 1rem 1rem; }
+  #payoff-chart {
+    display: block;
+    width: 100%;
+    height: auto;
+    user-select: none;
+  }
+
+  /* SVG chart styling */
+  #payoff-chart .grid-line { stroke: var(--line); stroke-width: 1; stroke-dasharray: 2,4; }
+  #payoff-chart .axis-line { stroke: var(--line); stroke-width: 1; }
+  #payoff-chart .zero-line { stroke: var(--muted); stroke-width: 1; opacity: 0.5; }
+  #payoff-chart .axis-label { fill: var(--muted); font-family: 'JetBrains Mono', monospace; font-size: 10px; }
+  #payoff-chart .spot-line { stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 4,3; }
+  #payoff-chart .spot-label { fill: var(--accent); font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; }
+  #payoff-chart .payoff-line { stroke: var(--accent); stroke-width: 2; fill: none; }
+  #payoff-chart .strike-mark { fill: var(--muted); font-family: 'JetBrains Mono', monospace; font-size: 9px; opacity: 0.7; }
+  #payoff-chart .breakeven-mark { stroke: var(--ink); stroke-width: 1; stroke-dasharray: 1,2; opacity: 0.5; }
+  #payoff-chart .leg-marker { fill: var(--accent); stroke: var(--bg); stroke-width: 2; }
+
+  footer {
+    margin-top: 1.5rem;
+    color: var(--muted);
+    font-size: 0.76rem;
+    line-height: 1.7;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  footer a { color: var(--accent); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">NSE F&amp;O · Strategy Lab</div>
+    <h1>Options Lab</h1>
+    <p class="subtitle">
+      Upload an NSE option chain CSV. Inspect the chain. Build multi-leg strategies and see
+      max profit, max loss, breakevens and the payoff curve at expiry — all in your browser, nothing leaves your machine.
+    </p>
+
+    <div class="file-bar">
+      <div id="file-empty">
+        <p class="nse-line">
+          Get the CSV from <a href="https://www.nseindia.com/option-chain" target="_blank" rel="noopener">nseindia.com/option-chain ↗</a>
+        </p>
+        <p class="hint">
+          Pick your index → pick an expiry → click the <strong>Download CSV</strong> link on that page. Then upload it below.
+        </p>
+        <label class="upload-btn">
+          <input type="file" accept=".csv" id="file-input" hidden>
+          Upload Option Chain CSV
+        </label>
+      </div>
+
+      <div id="file-loaded">
+        <div class="meta-grid">
+          <div class="item">
+            <span class="label">Symbol</span>
+            <span class="value big" id="info-symbol">—</span>
+          </div>
+          <div class="item">
+            <span class="label">Expiry</span>
+            <span class="value" id="info-expiry">—</span>
+          </div>
+          <div class="item">
+            <span class="label">Spot</span>
+            <input type="number" id="input-spot" step="0.05">
+          </div>
+          <div class="item">
+            <span class="label">Lot Size</span>
+            <input type="number" id="input-lot" step="1">
+          </div>
+          <div class="item">
+            <span class="label">Strikes</span>
+            <span class="value" id="info-strikes">—</span>
+          </div>
+          <div class="item">
+            <span class="label">File</span>
+            <span class="value" id="info-file" style="font-size: 0.78rem;">—</span>
+          </div>
+        </div>
+        <button class="replace-btn" id="replace-btn">Replace file</button>
+      </div>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab active" data-tab="chain" id="tab-btn-chain" disabled>Option Chain</button>
+    <button class="tab" data-tab="builder" id="tab-btn-builder" disabled>Strategy Builder</button>
+  </nav>
+
+  <main>
+    <section id="tab-chain" class="tab-content active">
+      <div class="panel">
+        <div id="chain-empty" class="empty-state">
+          <div class="icon">↑</div>
+          Upload a CSV above to view the option chain.
+        </div>
+        <div class="scroll" id="chain-wrap" style="display:none">
+          <table id="chain-table">
+            <thead></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-builder" class="tab-content">
+      <div id="builder-empty" class="empty-state panel" style="display:block;">
+        <div class="icon">↑</div>
+        Upload a CSV above to start building strategies.
+      </div>
+      <div class="builder-grid" id="builder-grid" style="display:none;">
+        <div class="panel legs-panel">
+          <div class="legs-header">
+            <span class="title">Strategy Legs</span>
+            <button class="clear" id="clear-legs">Clear all</button>
+          </div>
+          <div class="leg-col-header">
+            <span></span>
+            <span>B/S</span>
+            <span>Strike</span>
+            <span>Type</span>
+            <span>Lots</span>
+            <span>Price</span>
+            <span></span>
+          </div>
+          <div class="legs-list" id="legs-list"></div>
+          <div class="add-leg-row">
+            <button class="add-leg-btn" id="add-leg-btn">+ Add leg</button>
+          </div>
+          <div class="summary" id="summary">
+            <div class="stat">
+              <span class="label">Max Profit</span>
+              <span class="value" id="stat-max-profit">—</span>
+            </div>
+            <div class="stat">
+              <span class="label">Max Loss</span>
+              <span class="value" id="stat-max-loss">—</span>
+            </div>
+            <div class="stat">
+              <span class="label">Net Premium</span>
+              <span class="value" id="stat-net-premium">—</span>
+              <span class="sub" id="stat-net-premium-sub"></span>
+            </div>
+            <div class="stat">
+              <span class="label">Reward / Risk</span>
+              <span class="value" id="stat-rr">—</span>
+            </div>
+            <div class="stat" style="grid-column: 1 / -1;">
+              <span class="label">Breakeven(s) at expiry</span>
+              <span class="value" id="stat-breakeven">—</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel chart-panel">
+          <div class="chart-header">
+            <span class="title">Payoff at Expiry</span>
+            <div class="chart-legend">
+              <span><span class="dot call-oi"></span>Call OI</span>
+              <span><span class="dot put-oi"></span>Put OI</span>
+              <span><span class="dot payoff"></span>P/L</span>
+            </div>
+          </div>
+          <div class="chart-box">
+            <svg id="payoff-chart" viewBox="0 0 900 460" preserveAspectRatio="xMidYMid meet"></svg>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    Unofficial tool for personal use. All parsing and calculations run client-side in your browser; nothing is uploaded anywhere.
+    Always verify against the <a href="https://www.nseindia.com/option-chain" target="_blank" rel="noopener">official NSE option chain</a> before trading.
+    Lot sizes are auto-detected from the filename (NIFTY 65, BANKNIFTY 35, FINNIFTY 65, MIDCPNIFTY 140, SENSEX 20) and editable in the header — override if your index has a different lot size.
+  </footer>
+</div>
+
+<script>
+"use strict";
+
+// ---------- Constants ----------
+const LOT_SIZES = {
+  NIFTY: 65,        // user-confirmed current lot size
+  BANKNIFTY: 35,
+  FINNIFTY: 65,
+  MIDCPNIFTY: 140,
+  NIFTYNXT50: 25,
+  SENSEX: 20,
+  BANKEX: 30,
+  SENSEX50: 60
+};
+
+// Column layout of the NSE option chain CSV:
+//   CALLS:  OI, CHNG IN OI, VOLUME, IV, LTP, CHNG, BID QTY, BID, ASK, ASK QTY
+//   STRIKE
+//   PUTS:   BID QTY, BID, ASK, ASK QTY, CHNG, LTP, IV, VOLUME, CHNG IN OI, OI
+// Plus a leading empty col and a trailing empty col on each line.
+const CE_FIELDS = ['oi','chngOi','volume','iv','ltp','chng','bidQty','bid','ask','askQty'];
+const PE_FIELDS = ['bidQty','bid','ask','askQty','chng','ltp','iv','volume','chngOi','oi'];
+
+// ---------- State ----------
+let DATA = null;   // { symbol, expiry, fileName, rows:[{strike, ce:{...}, pe:{...}}], lotSize, spot }
+let LEGS = [];     // [{ id, action:'B'|'S', strike:Number, type:'CE'|'PE', lots:Number, price:Number }]
+let LEG_ID = 0;
+
+// ---------- CSV parsing ----------
+function parseCSVLine(line) {
+  const out = [];
+  let cur = '', inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (inQ) {
+      if (c === '"') {
+        if (line[i+1] === '"') { cur += '"'; i++; }
+        else inQ = false;
+      } else cur += c;
+    } else {
+      if (c === '"') inQ = true;
+      else if (c === ',') { out.push(cur); cur = ''; }
+      else cur += c;
+    }
+  }
+  out.push(cur);
+  return out;
+}
+
+function parseNum(s) {
+  if (s == null) return null;
+  const t = String(s).trim();
+  if (t === '' || t === '-') return null;
+  const n = Number(t.replace(/,/g, ''));
+  return isFinite(n) ? n : null;
+}
+
+function parseOptionChainCSV(text) {
+  const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
+  // Line 0: "CALLS,,PUTS"  Line 1: column headers.  Line 2+: data
+  const rows = [];
+  for (let i = 2; i < lines.length; i++) {
+    const cells = parseCSVLine(lines[i]);
+    // Layout: [empty, ce0..ce9, STRIKE, pe0..pe9, empty]
+    if (cells.length < 22) continue;
+    const strike = parseNum(cells[11]);
+    if (strike == null) continue;
+    const ce = {}, pe = {};
+    CE_FIELDS.forEach((f, j) => { ce[f] = parseNum(cells[1 + j]); });
+    PE_FIELDS.forEach((f, j) => { pe[f] = parseNum(cells[12 + j]); });
+    rows.push({ strike, ce, pe });
+  }
+  rows.sort((a, b) => a.strike - b.strike);
+  return rows;
+}
+
+// ---------- Filename inference ----------
+function inferFromFilename(name) {
+  // option-chain-ED-NIFTY-02-Jun-2026.csv
+  const m = name.match(/option-chain-(?:ED|OPTIDX|OPTSTK)?-?([A-Z0-9]+)-(\d{1,2})-([A-Za-z]+)-(\d{4})/i);
+  if (m) {
+    return {
+      symbol: m[1].toUpperCase(),
+      expiry: `${m[2]} ${m[3]} ${m[4]}`
+    };
+  }
+  // Fallback
+  const sym = (name.match(/[A-Z]{4,}/) || [])[0] || 'UNKNOWN';
+  return { symbol: sym.toUpperCase(), expiry: '—' };
+}
+
+// ---------- Spot estimation via put-call parity at ATM ----------
+function estimateSpot(rows) {
+  let best = null, minDiff = Infinity;
+  for (const r of rows) {
+    if (r.ce.ltp != null && r.pe.ltp != null && r.ce.ltp > 0 && r.pe.ltp > 0) {
+      const d = Math.abs(r.ce.ltp - r.pe.ltp);
+      if (d < minDiff) { minDiff = d; best = r; }
+    }
+  }
+  if (best) return best.strike + best.ce.ltp - best.pe.ltp;
+  return rows.length ? rows[Math.floor(rows.length/2)].strike : 0;
+}
+
+// ---------- File handling ----------
+function onFileSelect(ev) {
+  const file = ev.target.files && ev.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const rows = parseOptionChainCSV(e.target.result);
+      if (rows.length === 0) throw new Error('No strike rows found in the CSV.');
+      const { symbol, expiry } = inferFromFilename(file.name);
+      DATA = {
+        symbol, expiry,
+        fileName: file.name,
+        rows,
+        lotSize: LOT_SIZES[symbol] || 1,
+        spot: estimateSpot(rows)
+      };
+      LEGS = [];
+      enterLoadedState();
+    } catch (err) {
+      alert('Could not parse this CSV. Make sure it is the unmodified NSE option-chain download.\n\nDetails: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+  ev.target.value = '';  // allow re-selecting same file
+}
+
+function enterLoadedState() {
+  document.getElementById('file-empty').style.display = 'none';
+  document.getElementById('file-loaded').classList.add('active');
+  document.getElementById('info-symbol').textContent = DATA.symbol;
+  document.getElementById('info-expiry').textContent = DATA.expiry;
+  document.getElementById('info-file').textContent = DATA.fileName;
+  document.getElementById('info-strikes').textContent = DATA.rows.length;
+  document.getElementById('input-spot').value = DATA.spot.toFixed(2);
+  document.getElementById('input-lot').value = DATA.lotSize;
+  document.getElementById('tab-btn-chain').disabled = false;
+  document.getElementById('tab-btn-builder').disabled = false;
+  document.getElementById('chain-empty').style.display = 'none';
+  document.getElementById('chain-wrap').style.display = 'block';
+  document.getElementById('builder-empty').style.display = 'none';
+  document.getElementById('builder-grid').style.display = 'grid';
+  renderChain();
+  renderBuilder();
+}
+
+function resetState() {
+  DATA = null;
+  LEGS = [];
+  document.getElementById('file-empty').style.display = 'block';
+  document.getElementById('file-loaded').classList.remove('active');
+  document.getElementById('tab-btn-chain').disabled = true;
+  document.getElementById('tab-btn-builder').disabled = true;
+  document.getElementById('chain-empty').style.display = 'block';
+  document.getElementById('chain-wrap').style.display = 'none';
+  document.getElementById('builder-empty').style.display = 'block';
+  document.getElementById('builder-grid').style.display = 'none';
+  switchTab('chain');
+}
+
+// ---------- Tabs ----------
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  document.querySelectorAll('.tab-content').forEach(s => s.classList.toggle('active', s.id === 'tab-' + name));
+}
+
+// ---------- Formatting ----------
+const fmtIN = new Intl.NumberFormat('en-IN');
+const fmtINR = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 });
+function fmt(n, dp = 2) {
+  if (n == null || !isFinite(n)) return '—';
+  return n.toLocaleString('en-IN', { minimumFractionDigits: dp, maximumFractionDigits: dp });
+}
+function fmtRupees(n) {
+  if (n == null || !isFinite(n)) return '—';
+  const sign = n < 0 ? '−' : (n > 0 ? '+' : '');
+  return sign + '₹' + fmtINR.format(Math.abs(Math.round(n)));
+}
+function fmtOI(n) {
+  if (n == null) return '—';
+  if (n >= 1e7) return (n / 1e7).toFixed(2) + 'Cr';
+  if (n >= 1e5) return (n / 1e5).toFixed(2) + 'L';
+  return fmtIN.format(n);
+}
+
+// ---------- Option Chain rendering ----------
+function renderChain() {
+  if (!DATA) return;
+  const thead = document.querySelector('#chain-table thead');
+  const tbody = document.querySelector('#chain-table tbody');
+  thead.innerHTML = '';
+  tbody.innerHTML = '';
+
+  // Two-row header: section row, then column row.
+  const sectionRow = document.createElement('tr');
+  sectionRow.className = 'section-row';
+  sectionRow.innerHTML =
+    `<th colspan="8" class="calls-section">CALLS</th>` +
+    `<th class="strike-col">·</th>` +
+    `<th colspan="8" class="puts-section">PUTS</th>`;
+  thead.appendChild(sectionRow);
+
+  const colRow = document.createElement('tr');
+  const callCols = ['OI','Chg OI','Volume','IV','LTP','Chg','Bid','Ask'];
+  const putCols  = ['Bid','Ask','Chg','LTP','IV','Volume','Chg OI','OI'];
+  let html = '';
+  callCols.forEach(c => html += `<th>${c}</th>`);
+  html += `<th class="strike-col">Strike</th>`;
+  putCols.forEach(c => html += `<th>${c}</th>`);
+  colRow.innerHTML = html;
+  thead.appendChild(colRow);
+
+  // Find ATM strike (closest to spot).
+  let atmIdx = 0, atmDiff = Infinity;
+  DATA.rows.forEach((r, i) => {
+    const d = Math.abs(r.strike - DATA.spot);
+    if (d < atmDiff) { atmDiff = d; atmIdx = i; }
+  });
+
+  DATA.rows.forEach((r, i) => {
+    const tr = document.createElement('tr');
+    if (i === atmIdx) tr.classList.add('atm');
+    const callItm = r.strike < DATA.spot ? 'itm' : '';
+    const putItm  = r.strike > DATA.spot ? 'itm' : '';
+    const cell = (txt, klass) => {
+      const td = document.createElement('td');
+      if (txt == null || txt === '') { td.textContent = '−'; td.classList.add('dash'); }
+      else td.textContent = txt;
+      if (klass) klass.split(' ').filter(Boolean).forEach(k => td.classList.add(k));
+      return td;
+    };
+    // CALLS side
+    tr.appendChild(cell(r.ce.oi != null ? fmtOI(r.ce.oi) : null, callItm));
+    {
+      const td = cell(r.ce.chngOi != null ? fmt(r.ce.chngOi, 0) : null, callItm);
+      if (r.ce.chngOi > 0) td.classList.add('chg-pos');
+      else if (r.ce.chngOi < 0) td.classList.add('chg-neg');
+      tr.appendChild(td);
+    }
+    tr.appendChild(cell(r.ce.volume != null ? fmtOI(r.ce.volume) : null, callItm));
+    tr.appendChild(cell(r.ce.iv != null ? fmt(r.ce.iv) : null, callItm));
+    tr.appendChild(cell(r.ce.ltp != null ? fmt(r.ce.ltp) : null, callItm));
+    {
+      const td = cell(r.ce.chng != null ? fmt(r.ce.chng) : null, callItm);
+      if (r.ce.chng > 0) td.classList.add('chg-pos');
+      else if (r.ce.chng < 0) td.classList.add('chg-neg');
+      tr.appendChild(td);
+    }
+    tr.appendChild(cell(r.ce.bid != null ? fmt(r.ce.bid) : null, callItm));
+    tr.appendChild(cell(r.ce.ask != null ? fmt(r.ce.ask) : null, callItm));
+    // STRIKE
+    {
+      const td = document.createElement('td');
+      td.textContent = fmt(r.strike, 0);
+      td.classList.add('strike-cell');
+      tr.appendChild(td);
+    }
+    // PUTS side
+    tr.appendChild(cell(r.pe.bid != null ? fmt(r.pe.bid) : null, putItm));
+    tr.appendChild(cell(r.pe.ask != null ? fmt(r.pe.ask) : null, putItm));
+    {
+      const td = cell(r.pe.chng != null ? fmt(r.pe.chng) : null, putItm);
+      if (r.pe.chng > 0) td.classList.add('chg-pos');
+      else if (r.pe.chng < 0) td.classList.add('chg-neg');
+      tr.appendChild(td);
+    }
+    tr.appendChild(cell(r.pe.ltp != null ? fmt(r.pe.ltp) : null, putItm));
+    tr.appendChild(cell(r.pe.iv != null ? fmt(r.pe.iv) : null, putItm));
+    tr.appendChild(cell(r.pe.volume != null ? fmtOI(r.pe.volume) : null, putItm));
+    {
+      const td = cell(r.pe.chngOi != null ? fmt(r.pe.chngOi, 0) : null, putItm);
+      if (r.pe.chngOi > 0) td.classList.add('chg-pos');
+      else if (r.pe.chngOi < 0) td.classList.add('chg-neg');
+      tr.appendChild(td);
+    }
+    tr.appendChild(cell(r.pe.oi != null ? fmtOI(r.pe.oi) : null, putItm));
+    tbody.appendChild(tr);
+  });
+}
+
+// ---------- Strategy Builder ----------
+function defaultPriceForLeg(strike, type, action) {
+  const row = DATA.rows.find(r => r.strike === strike);
+  if (!row) return 0;
+  const opt = type === 'CE' ? row.ce : row.pe;
+  // Most realistic: buy at ask, sell at bid.
+  if (action === 'B' && opt.ask != null && opt.ask > 0) return opt.ask;
+  if (action === 'S' && opt.bid != null && opt.bid > 0) return opt.bid;
+  if (opt.ltp != null && opt.ltp > 0) return opt.ltp;
+  if (opt.bid != null && opt.ask != null) return (opt.bid + opt.ask) / 2;
+  return 0;
+}
+
+function addLeg() {
+  // Default new leg: Buy CE at the ATM strike.
+  let atm = DATA.rows[0].strike;
+  let bestDiff = Infinity;
+  for (const r of DATA.rows) {
+    const d = Math.abs(r.strike - DATA.spot);
+    if (d < bestDiff) { bestDiff = d; atm = r.strike; }
+  }
+  const leg = {
+    id: ++LEG_ID,
+    action: 'B',
+    strike: atm,
+    type: 'CE',
+    lots: 1,
+    price: defaultPriceForLeg(atm, 'CE', 'B')
+  };
+  LEGS.push(leg);
+  renderBuilder();
+}
+
+function removeLeg(id) {
+  LEGS = LEGS.filter(l => l.id !== id);
+  renderBuilder();
+}
+
+function updateLeg(id, field, value) {
+  const leg = LEGS.find(l => l.id === id);
+  if (!leg) return;
+  const prevAction = leg.action, prevStrike = leg.strike, prevType = leg.type, prevPrice = leg.price;
+  if (field === 'action') leg.action = value;
+  else if (field === 'strike') leg.strike = Number(value);
+  else if (field === 'type') leg.type = value;
+  else if (field === 'lots') leg.lots = Math.max(1, Number(value) || 1);
+  else if (field === 'price') leg.price = Math.max(0, Number(value) || 0);
+
+  // If user changed action/strike/type, re-derive the price (unless price was the explicit edit).
+  if (field === 'action' || field === 'strike' || field === 'type') {
+    leg.price = defaultPriceForLeg(leg.strike, leg.type, leg.action);
+  }
+  renderBuilder();
+}
+
+function renderBuilder() {
+  if (!DATA) return;
+  renderLegs();
+  const stats = computeStats();
+  renderSummary(stats);
+  renderChart(stats);
+}
+
+function renderLegs() {
+  const list = document.getElementById('legs-list');
+  list.innerHTML = '';
+
+  if (LEGS.length === 0) {
+    const empty = document.createElement('div');
+    empty.style.cssText = 'padding: 1.2rem 0; text-align: center; font-family: "JetBrains Mono", monospace; font-size: 0.78rem; color: var(--muted);';
+    empty.textContent = 'No legs yet. Add one to begin.';
+    list.appendChild(empty);
+    return;
+  }
+
+  const strikes = DATA.rows.map(r => r.strike);
+
+  LEGS.forEach(leg => {
+    const row = document.createElement('div');
+    row.className = 'leg-row';
+
+    // Buy/Sell toggle button
+    const bs = document.createElement('button');
+    bs.className = 'leg-bs ' + (leg.action === 'B' ? 'buy' : 'sell');
+    bs.textContent = leg.action;
+    bs.title = leg.action === 'B' ? 'Buy — click to switch to Sell' : 'Sell — click to switch to Buy';
+    bs.onclick = () => updateLeg(leg.id, 'action', leg.action === 'B' ? 'S' : 'B');
+    row.appendChild(bs);
+
+    // Expiry (fixed display, since CSV is a single expiry)
+    const exp = document.createElement('div');
+    exp.style.cssText = 'font-family: "JetBrains Mono", monospace; font-size: 0.72rem; color: var(--muted); text-align: center;';
+    exp.textContent = DATA.expiry.split(' ').slice(0, 2).join(' ');
+    row.appendChild(exp);
+
+    // Strike select
+    const strike = document.createElement('select');
+    strike.className = 'leg-select';
+    strikes.forEach(k => {
+      const o = document.createElement('option');
+      o.value = k;
+      o.textContent = fmt(k, 0);
+      if (k === leg.strike) o.selected = true;
+      strike.appendChild(o);
+    });
+    strike.onchange = () => updateLeg(leg.id, 'strike', strike.value);
+    row.appendChild(strike);
+
+    // Type select
+    const type = document.createElement('select');
+    type.className = 'leg-select';
+    ['CE','PE'].forEach(t => {
+      const o = document.createElement('option');
+      o.value = t; o.textContent = t;
+      if (t === leg.type) o.selected = true;
+      type.appendChild(o);
+    });
+    type.onchange = () => updateLeg(leg.id, 'type', type.value);
+    row.appendChild(type);
+
+    // Lots input
+    const lots = document.createElement('input');
+    lots.className = 'leg-input';
+    lots.type = 'number'; lots.min = '1'; lots.step = '1';
+    lots.value = leg.lots;
+    lots.onchange = () => updateLeg(leg.id, 'lots', lots.value);
+    row.appendChild(lots);
+
+    // Price input
+    const price = document.createElement('input');
+    price.className = 'leg-input';
+    price.type = 'number'; price.min = '0'; price.step = '0.05';
+    price.value = leg.price.toFixed(2);
+    price.onchange = () => updateLeg(leg.id, 'price', price.value);
+    row.appendChild(price);
+
+    // Delete
+    const del = document.createElement('button');
+    del.className = 'leg-del';
+    del.textContent = '×';
+    del.title = 'Remove leg';
+    del.onclick = () => removeLeg(leg.id);
+    row.appendChild(del);
+
+    list.appendChild(row);
+  });
+}
+
+// ---------- Payoff math ----------
+function legPnL(leg, S_T, lotSize) {
+  let intrinsic;
+  if (leg.type === 'CE') intrinsic = Math.max(S_T - leg.strike, 0);
+  else intrinsic = Math.max(leg.strike - S_T, 0);
+  const qty = leg.lots * lotSize;
+  if (leg.action === 'B') return qty * (intrinsic - leg.price);
+  else return qty * (leg.price - intrinsic);
+}
+
+function totalPnL(S_T) {
+  let sum = 0;
+  for (const leg of LEGS) sum += legPnL(leg, S_T, DATA.lotSize);
+  return sum;
+}
+
+function computePayoffCurve(minS, maxS) {
+  // Sample uniformly + include every leg strike (kink points) for exact corner rendering.
+  const N = 240;
+  const pts = [];
+  for (let i = 0; i <= N; i++) {
+    const s = minS + (maxS - minS) * (i / N);
+    pts.push({ s, p: totalPnL(s) });
+  }
+  for (const leg of LEGS) {
+    if (leg.strike >= minS && leg.strike <= maxS) {
+      pts.push({ s: leg.strike, p: totalPnL(leg.strike) });
+    }
+  }
+  pts.sort((a, b) => a.s - b.s);
+  return pts;
+}
+
+function computeStats() {
+  if (!DATA || LEGS.length === 0) {
+    return { legs: 0, netPremium: 0, maxProfit: 0, maxLoss: 0, breakevens: [], curve: [], minS: 0, maxS: 0,
+      maxProfitUnlimited: false, maxLossUnlimited: false };
+  }
+
+  // Display range: bracket spot ± reasonable swing, but always include all leg strikes.
+  let minS = DATA.spot * 0.80;
+  let maxS = DATA.spot * 1.20;
+  for (const leg of LEGS) {
+    if (leg.strike < minS) minS = leg.strike * 0.95;
+    if (leg.strike > maxS) maxS = leg.strike * 1.05;
+  }
+  minS = Math.max(0, minS);
+
+  const curve = computePayoffCurve(minS, maxS);
+
+  // Asymptotic slopes detect unbounded payoff.
+  // dP&L/dS_T at S → +∞: only CE legs matter (slope contribution = +qty for buy, -qty for sell)
+  // dP&L/dS_T at S → 0 (downside): only PE legs (slope contribution = -qty for buy, +qty for sell)
+  let upSlope = 0, downSlope = 0;
+  for (const leg of LEGS) {
+    const qty = leg.lots * DATA.lotSize;
+    const sgn = leg.action === 'B' ? 1 : -1;
+    if (leg.type === 'CE') upSlope += sgn * qty;
+    if (leg.type === 'PE') downSlope -= sgn * qty;  // dP&L/dS_T contribution
+  }
+  const maxProfitUnlimited = upSlope > 1e-9 || downSlope < -1e-9;
+  const maxLossUnlimited = upSlope < -1e-9 || downSlope > 1e-9;
+
+  let mxP = -Infinity, mnP = Infinity;
+  for (const pt of curve) {
+    if (pt.p > mxP) mxP = pt.p;
+    if (pt.p < mnP) mnP = pt.p;
+  }
+
+  // Breakevens: linear interpolation across sign changes.
+  const breakevens = [];
+  for (let i = 1; i < curve.length; i++) {
+    const a = curve[i-1], b = curve[i];
+    if ((a.p < 0 && b.p > 0) || (a.p > 0 && b.p < 0)) {
+      const t = -a.p / (b.p - a.p);
+      breakevens.push(a.s + t * (b.s - a.s));
+    } else if (a.p === 0 && (i === 1 || curve[i-2].p !== 0)) {
+      breakevens.push(a.s);
+    }
+  }
+
+  // Net premium (positive = credit received, negative = debit paid).
+  let netPremium = 0;
+  for (const leg of LEGS) {
+    const qty = leg.lots * DATA.lotSize;
+    const sgn = leg.action === 'B' ? -1 : 1;
+    netPremium += sgn * qty * leg.price;
+  }
+
+  return {
+    legs: LEGS.length, netPremium,
+    maxProfit: mxP, maxLoss: mnP,
+    maxProfitUnlimited, maxLossUnlimited,
+    breakevens, curve, minS, maxS
+  };
+}
+
+// ---------- Summary ----------
+function renderSummary(s) {
+  const mpEl = document.getElementById('stat-max-profit');
+  const mlEl = document.getElementById('stat-max-loss');
+  const npEl = document.getElementById('stat-net-premium');
+  const npSub = document.getElementById('stat-net-premium-sub');
+  const rrEl = document.getElementById('stat-rr');
+  const beEl = document.getElementById('stat-breakeven');
+
+  if (LEGS.length === 0) {
+    mpEl.textContent = '—'; mpEl.className = 'value';
+    mlEl.textContent = '—'; mlEl.className = 'value';
+    npEl.textContent = '—'; npEl.className = 'value'; npSub.textContent = '';
+    rrEl.textContent = '—'; rrEl.className = 'value';
+    beEl.textContent = '—'; beEl.className = 'value';
+    return;
+  }
+
+  if (s.maxProfitUnlimited) {
+    mpEl.textContent = 'Unlimited'; mpEl.className = 'value pos';
+  } else {
+    mpEl.textContent = fmtRupees(s.maxProfit); mpEl.className = 'value pos';
+  }
+
+  if (s.maxLossUnlimited) {
+    mlEl.textContent = 'Unlimited'; mlEl.className = 'value neg';
+  } else {
+    mlEl.textContent = fmtRupees(s.maxLoss); mlEl.className = 'value neg';
+  }
+
+  npEl.textContent = fmtRupees(s.netPremium);
+  npEl.className = 'value ' + (s.netPremium >= 0 ? 'pos' : 'neg');
+  npSub.textContent = s.netPremium >= 0 ? 'credit received' : 'debit paid';
+
+  if (!s.maxProfitUnlimited && !s.maxLossUnlimited && s.maxLoss < 0) {
+    const rr = s.maxProfit / Math.abs(s.maxLoss);
+    rrEl.textContent = rr.toFixed(2) + ' : 1';
+    rrEl.className = 'value accent';
+  } else if (s.maxProfitUnlimited) {
+    rrEl.textContent = '∞';
+    rrEl.className = 'value accent';
+  } else {
+    rrEl.textContent = '—'; rrEl.className = 'value';
+  }
+
+  if (s.breakevens.length === 0) {
+    beEl.textContent = 'None in range';
+    beEl.className = 'value';
+  } else {
+    beEl.textContent = s.breakevens.map(b => fmt(b, 2)).join('   ·   ');
+    beEl.className = 'value accent';
+  }
+}
+
+// ---------- Chart ----------
+function renderChart(s) {
+  const svg = document.getElementById('payoff-chart');
+  svg.innerHTML = '';
+
+  const W = 900, H = 460;
+  const M = { top: 30, right: 70, bottom: 50, left: 80 };
+  const PW = W - M.left - M.right;
+  const PH = H - M.top - M.bottom;
+
+  if (LEGS.length === 0) {
+    // Friendly empty state
+    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    text.setAttribute('x', W/2); text.setAttribute('y', H/2);
+    text.setAttribute('text-anchor', 'middle');
+    text.setAttribute('class', 'axis-label');
+    text.setAttribute('fill', '#8b8f99');
+    text.style.fontSize = '13px';
+    text.textContent = 'Add a leg to see the payoff';
+    svg.appendChild(text);
+    return;
+  }
+
+  const { minS, maxS, curve } = s;
+
+  // Y range from curve, padded.
+  let yMin = Math.min(0, ...curve.map(p => p.p));
+  let yMax = Math.max(0, ...curve.map(p => p.p));
+  if (yMin === yMax) { yMin -= 100; yMax += 100; }
+  const yPad = (yMax - yMin) * 0.12;
+  yMin -= yPad; yMax += yPad;
+
+  // OI scaling (right axis)
+  const oiData = DATA.rows.filter(r => r.strike >= minS && r.strike <= maxS);
+  const maxOi = Math.max(1,
+    ...oiData.map(r => r.ce.oi || 0),
+    ...oiData.map(r => r.pe.oi || 0)
+  );
+
+  const xScale = (v) => M.left + ((v - minS) / (maxS - minS)) * PW;
+  const yScale = (v) => M.top + (1 - (v - yMin) / (yMax - yMin)) * PH;
+  // OI uses the same plot height; shrink so bars never exceed ~45% of plot height.
+  const oiBarH = (v) => ((v || 0) / maxOi) * (PH * 0.45);
+
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+  const el = (name, attrs = {}) => {
+    const e = document.createElementNS(SVG_NS, name);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  };
+
+  // ---- OI bars (behind everything else) ----
+  // Bar half-width: half the median strike gap (or PW/strikes).
+  const strikesInRange = oiData.map(r => r.strike);
+  let barHalfW = 6;
+  if (strikesInRange.length > 1) {
+    const gaps = [];
+    for (let i = 1; i < strikesInRange.length; i++) gaps.push(strikesInRange[i] - strikesInRange[i-1]);
+    gaps.sort((a, b) => a - b);
+    const medGap = gaps[Math.floor(gaps.length / 2)];
+    barHalfW = Math.max(2, (medGap / (maxS - minS)) * PW * 0.4);
+  }
+  const baseline = M.top + PH;
+  for (const r of oiData) {
+    const cx = xScale(r.strike);
+    // Call OI bar (red/pink) — left half
+    if (r.ce.oi) {
+      const h = oiBarH(r.ce.oi);
+      svg.appendChild(el('rect', {
+        x: cx - barHalfW, y: baseline - h,
+        width: barHalfW * 0.92, height: h,
+        fill: 'var(--neg)', opacity: 0.35
+      }));
+    }
+    // Put OI bar (green) — right half
+    if (r.pe.oi) {
+      const h = oiBarH(r.pe.oi);
+      svg.appendChild(el('rect', {
+        x: cx + barHalfW * 0.08, y: baseline - h,
+        width: barHalfW * 0.92, height: h,
+        fill: 'var(--pos)', opacity: 0.35
+      }));
+    }
+  }
+
+  // ---- Grid lines ----
+  const yTicks = niceTicks(yMin, yMax, 6);
+  for (const t of yTicks) {
+    if (t === 0) continue;
+    const y = yScale(t);
+    svg.appendChild(el('line', { x1: M.left, x2: M.left + PW, y1: y, y2: y, class: 'grid-line' }));
+  }
+  const xTicks = niceTicks(minS, maxS, 7);
+  for (const t of xTicks) {
+    const x = xScale(t);
+    svg.appendChild(el('line', { x1: x, x2: x, y1: M.top, y2: M.top + PH, class: 'grid-line' }));
+  }
+
+  // ---- Zero (P/L = 0) line ----
+  if (yMin <= 0 && yMax >= 0) {
+    const y0 = yScale(0);
+    svg.appendChild(el('line', { x1: M.left, x2: M.left + PW, y1: y0, y2: y0, class: 'zero-line' }));
+  }
+
+  // ---- Payoff: filled regions (green above, red below zero) ----
+  // Build a polygon from curve down to the zero line, then clip into halves.
+  const zeroY = (yMin <= 0 && yMax >= 0) ? yScale(0) : (yMax < 0 ? M.top : M.top + PH);
+
+  // We'll draw two paths: one filled green clipped to [top..zeroY], one filled red clipped to [zeroY..bottom].
+  let polyPath = '';
+  curve.forEach((pt, i) => {
+    polyPath += (i === 0 ? 'M' : ' L') + xScale(pt.s).toFixed(2) + ' ' + yScale(pt.p).toFixed(2);
+  });
+  // Close the polygon down to zero line at both ends
+  const xLeft = xScale(curve[0].s).toFixed(2);
+  const xRight = xScale(curve[curve.length - 1].s).toFixed(2);
+  const polyFill = `M${xLeft} ${zeroY} ${polyPath.substring(1)} L${xRight} ${zeroY} Z`;
+
+  // Defs with clip paths
+  const defs = el('defs');
+  const clipAbove = el('clipPath', { id: 'clip-above' });
+  clipAbove.appendChild(el('rect', { x: M.left, y: M.top, width: PW, height: Math.max(0, zeroY - M.top) }));
+  defs.appendChild(clipAbove);
+  const clipBelow = el('clipPath', { id: 'clip-below' });
+  clipBelow.appendChild(el('rect', { x: M.left, y: zeroY, width: PW, height: Math.max(0, M.top + PH - zeroY) }));
+  defs.appendChild(clipBelow);
+  svg.appendChild(defs);
+
+  svg.appendChild(el('path', { d: polyFill, fill: 'var(--pos)', opacity: '0.22', 'clip-path': 'url(#clip-above)' }));
+  svg.appendChild(el('path', { d: polyFill, fill: 'var(--neg)', opacity: '0.22', 'clip-path': 'url(#clip-below)' }));
+
+  // ---- Payoff line on top ----
+  svg.appendChild(el('path', { d: polyPath, class: 'payoff-line' }));
+
+  // ---- Breakeven markers ----
+  for (const b of s.breakevens) {
+    const x = xScale(b);
+    svg.appendChild(el('line', { x1: x, x2: x, y1: yScale(0) - 6, y2: yScale(0) + 6, class: 'breakeven-mark' }));
+    const t = el('text', { x, y: yScale(0) - 9, 'text-anchor': 'middle', class: 'strike-mark' });
+    t.textContent = fmt(b, 0);
+    svg.appendChild(t);
+  }
+
+  // ---- Current spot vertical line ----
+  if (DATA.spot >= minS && DATA.spot <= maxS) {
+    const xSpot = xScale(DATA.spot);
+    svg.appendChild(el('line', { x1: xSpot, x2: xSpot, y1: M.top, y2: M.top + PH, class: 'spot-line' }));
+    const t = el('text', { x: xSpot, y: M.top - 6, 'text-anchor': 'middle', class: 'spot-label' });
+    t.textContent = 'Spot ' + fmt(DATA.spot, 2);
+    svg.appendChild(t);
+  }
+
+  // ---- Leg strike markers (small dots on x-axis) ----
+  for (const leg of LEGS) {
+    if (leg.strike < minS || leg.strike > maxS) continue;
+    const x = xScale(leg.strike);
+    svg.appendChild(el('circle', {
+      cx: x, cy: M.top + PH + 12, r: 3.5, class: 'leg-marker',
+      fill: leg.action === 'B' ? 'var(--buy)' : 'var(--sell)'
+    }));
+  }
+
+  // ---- Axes ----
+  // Left Y axis labels (P/L in rupees)
+  for (const t of yTicks) {
+    const y = yScale(t);
+    const lbl = el('text', { x: M.left - 8, y: y + 3, 'text-anchor': 'end', class: 'axis-label' });
+    lbl.textContent = formatPnLAxis(t);
+    svg.appendChild(lbl);
+  }
+  // Right Y axis labels (OI scale)
+  const oiTicks = niceTicks(0, maxOi, 5);
+  for (const t of oiTicks) {
+    if (t === 0) continue;
+    const h = oiBarH(t);
+    const y = baseline - h;
+    const lbl = el('text', { x: M.left + PW + 8, y: y + 3, 'text-anchor': 'start', class: 'axis-label' });
+    lbl.textContent = fmtOI(t);
+    lbl.setAttribute('fill', 'var(--muted)');
+    svg.appendChild(lbl);
+  }
+
+  // X axis labels
+  for (const t of xTicks) {
+    const x = xScale(t);
+    const lbl = el('text', { x, y: M.top + PH + 22, 'text-anchor': 'middle', class: 'axis-label' });
+    lbl.textContent = fmt(t, 0);
+    svg.appendChild(lbl);
+  }
+
+  // Axis frame
+  svg.appendChild(el('line', { x1: M.left, x2: M.left + PW, y1: M.top + PH, y2: M.top + PH, class: 'axis-line' }));
+
+  // Axis titles
+  const xTitle = el('text', { x: M.left + PW / 2, y: H - 8, 'text-anchor': 'middle', class: 'axis-label' });
+  xTitle.textContent = 'Underlying at expiry';
+  svg.appendChild(xTitle);
+
+  const yTitle = el('text', {
+    x: 16, y: M.top + PH / 2, 'text-anchor': 'middle', class: 'axis-label',
+    transform: `rotate(-90, 16, ${M.top + PH / 2})`
+  });
+  yTitle.textContent = 'P / L  (₹)';
+  svg.appendChild(yTitle);
+
+  const oiTitle = el('text', {
+    x: W - 16, y: M.top + PH / 2, 'text-anchor': 'middle', class: 'axis-label',
+    transform: `rotate(90, ${W - 16}, ${M.top + PH / 2})`
+  });
+  oiTitle.textContent = 'Open Interest';
+  svg.appendChild(oiTitle);
+}
+
+function formatPnLAxis(v) {
+  if (v === 0) return '0';
+  const abs = Math.abs(v);
+  const sign = v < 0 ? '−' : '';
+  if (abs >= 1e7) return sign + '₹' + (abs / 1e7).toFixed(1) + 'Cr';
+  if (abs >= 1e5) return sign + '₹' + (abs / 1e5).toFixed(1) + 'L';
+  if (abs >= 1e3) return sign + '₹' + (abs / 1e3).toFixed(0) + 'K';
+  return sign + '₹' + abs.toFixed(0);
+}
+
+function niceTicks(min, max, n) {
+  if (min === max) return [min];
+  const range = max - min;
+  const step0 = range / n;
+  const mag = Math.pow(10, Math.floor(Math.log10(step0)));
+  const norm = step0 / mag;
+  let step;
+  if (norm < 1.5) step = mag;
+  else if (norm < 3.5) step = 2 * mag;
+  else if (norm < 7.5) step = 5 * mag;
+  else step = 10 * mag;
+  const start = Math.ceil(min / step) * step;
+  const out = [];
+  for (let v = start; v <= max + 1e-9; v += step) {
+    out.push(Math.abs(v) < 1e-9 ? 0 : v);
+  }
+  return out;
+}
+
+// ---------- Init ----------
+document.getElementById('file-input').addEventListener('change', onFileSelect);
+document.getElementById('replace-btn').addEventListener('click', resetState);
+document.querySelectorAll('.tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (btn.disabled) return;
+    switchTab(btn.dataset.tab);
+  });
+});
+document.getElementById('add-leg-btn').addEventListener('click', addLeg);
+document.getElementById('clear-legs').addEventListener('click', () => { LEGS = []; renderBuilder(); });
+document.getElementById('input-spot').addEventListener('change', (e) => {
+  const v = Number(e.target.value);
+  if (isFinite(v) && v > 0) { DATA.spot = v; renderChain(); renderBuilder(); }
+});
+document.getElementById('input-lot').addEventListener('change', (e) => {
+  const v = Math.max(1, Math.round(Number(e.target.value) || 1));
+  DATA.lotSize = v;
+  e.target.value = v;
+  renderBuilder();
+});
+</script>
+</body>
+</html>
