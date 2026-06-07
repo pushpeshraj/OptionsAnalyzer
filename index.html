@@ -873,6 +873,100 @@
     color: #0c0d10;
     font-weight: 700;
   }
+
+  /* ---------- F&O Builder tab (combined options + futures) ---------- */
+  .cb-fut-bar {
+    padding: 1rem 1.2rem;
+    margin-bottom: 1.2rem;
+  }
+  .cb-fut-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 0.8rem;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+  }
+  .cb-fut-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.66rem;
+    color: var(--muted);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+  .cb-nse-line {
+    margin: 0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--muted);
+  }
+  .cb-nse-line a { color: var(--accent); text-decoration: none; }
+  .cb-nse-line a:hover { text-decoration: underline; }
+  .cb-fut-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+  .cb-fut-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.4rem 0.5rem 0.4rem 0.8rem;
+    background: #0c0d10;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--ink);
+  }
+  .cb-fut-chip-price {
+    color: var(--muted);
+    font-size: 0.7rem;
+    margin-left: 0.3rem;
+  }
+  .cb-fut-chip-close {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-size: 1.05rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 0.2rem;
+    border-radius: 3px;
+  }
+  .cb-fut-chip-close:hover { color: var(--neg); }
+  .cb-fut-chip.add-chip {
+    border-style: dashed;
+    color: var(--muted);
+    padding: 0.4rem 0.8rem;
+    background: transparent;
+    cursor: pointer;
+    border: 1px dashed var(--line);
+  }
+  .cb-fut-chip.add-chip:hover { border-color: var(--accent); color: var(--accent); }
+  .cb-add-row {
+    display: flex;
+    gap: 0.5rem;
+  }
+  .cb-add-row .add-leg-btn { flex: 1; }
+  .cb-fut-cell {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--muted);
+    text-align: center;
+    align-self: center;
+    letter-spacing: 0.08em;
+  }
+  .cb-fut-badge {
+    display: inline-block;
+    background: rgba(240,168,48,0.15);
+    color: var(--accent);
+    padding: 2px 7px;
+    border-radius: 3px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+  }
 </style>
 </head>
 <body>
@@ -937,6 +1031,7 @@
     <button class="tab active" data-tab="chain" id="tab-btn-chain" disabled>Option Chain</button>
     <button class="tab" data-tab="builder" id="tab-btn-builder" disabled>Strategy Builder</button>
     <button class="tab" data-tab="templates" id="tab-btn-templates" disabled>Templates</button>
+    <button class="tab" data-tab="combined" id="tab-btn-combined" disabled>F&amp;O Builder</button>
   </nav>
 
   <main>
@@ -1056,6 +1151,73 @@
         <div class="templates-foot">All strikes are picked from the chosen expiry's chain — closest to a target offset from ATM. Prices default to bid (sell) / ask (buy), editable later in the Builder.</div>
       </div>
     </section>
+
+    <section id="tab-combined" class="tab-content">
+      <div id="combined-empty" class="empty-state panel" style="display:block;">
+        <div class="icon">↑</div>
+        Upload an option chain CSV above to enable the F&amp;O builder.
+      </div>
+      <div id="combined-loaded" style="display:none;">
+        <div class="panel cb-fut-bar">
+          <div class="cb-fut-head">
+            <span class="cb-fut-title">Futures Contracts Loaded</span>
+            <p class="cb-nse-line">
+              Get the futures CSV from <a href="https://www.nseindia.com/market-data/equity-derivatives-watch" target="_blank" rel="noopener">nseindia.com/market-data/equity-derivatives-watch ↗</a>
+            </p>
+          </div>
+          <div class="cb-fut-chips" id="cb-fut-chips"></div>
+          <input type="file" accept=".csv" id="cb-future-input" multiple hidden>
+        </div>
+
+        <div class="builder-grid" id="cb-grid">
+          <div class="panel legs-panel">
+            <div class="legs-head">
+              <span>Combined Legs</span>
+              <button class="link-btn" id="cb-clear-legs">Clear all</button>
+            </div>
+            <div class="leg-col-header">
+              <div></div>
+              <div>EXPIRY</div>
+              <div>STRIKE</div>
+              <div>TYPE</div>
+              <div>LOTS</div>
+              <div>PRICE</div>
+              <div></div>
+            </div>
+            <div class="legs-list" id="cb-legs-list"></div>
+            <div class="add-leg-row cb-add-row">
+              <button class="add-leg-btn" id="cb-add-option-btn">+ Add option leg</button>
+              <button class="add-leg-btn" id="cb-add-future-btn">+ Add future leg</button>
+            </div>
+            <div class="target-section" id="cb-target-section" style="display:none;"></div>
+            <div class="summary" id="cb-summary">
+              <div class="stat"><span class="label">Max Profit</span><span class="value" id="cb-stat-max-profit">—</span></div>
+              <div class="stat"><span class="label">Max Loss</span><span class="value" id="cb-stat-max-loss">—</span></div>
+              <div class="stat"><span class="label">Net Premium</span><span class="value" id="cb-stat-net-premium">—</span><span class="sub" id="cb-stat-net-premium-sub"></span></div>
+              <div class="stat"><span class="label">Reward / Risk</span><span class="value" id="cb-stat-rr">—</span></div>
+              <div class="stat" style="grid-column: 1 / -1;"><span class="label">Breakeven(s) at expiry</span><span class="value" id="cb-stat-breakeven">—</span></div>
+            </div>
+          </div>
+
+          <div class="panel chart-panel">
+            <div class="chart-header">
+              <span class="title">Payoff at Expiry</span>
+              <div class="range-toggle" id="cb-range-toggle">
+                <button class="range-btn" data-cb-range="5" type="button">±5%</button>
+                <button class="range-btn active" data-cb-range="10" type="button">±10%</button>
+                <button class="range-btn" data-cb-range="20" type="button">±20%</button>
+              </div>
+              <div class="chart-legend">
+                <span><span class="dot payoff"></span>P/L</span>
+              </div>
+            </div>
+            <div class="chart-box">
+              <svg id="cb-payoff-chart" viewBox="0 0 900 460" preserveAspectRatio="xMidYMid meet"></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
   </main>
 
   <footer>
@@ -1099,6 +1261,13 @@ let TARGET_KEY = null;       // file key of the "target date" — payoff x-axis 
 let PAST_UNDERLYINGS = {};   // fileKey → underlying value at THAT expiry (for legs earlier than target)
 // Chart range %: 10 (default) or 20 — controlled by the toggle in the chart header
 let CHART_RANGE_PCT = 10;
+// ---------- F&O Builder tab state (4th tab — purely additive) ----------
+let F_FILES = {};            // future contract key → { key, symbol, expiry, fileName, futurePrice, underlying, lotSize }
+let CB_LEGS = [];            // combined builder legs: [{ id, kind:'option'|'future', fileKey, action, ...kind-specific }]
+let CB_LEG_ID = 0;
+let CB_TARGET_KEY = null;    // target expiry for the combined chart — references FILES or F_FILES
+let CB_PAST_UNDERLYINGS = {};
+let CB_CHART_RANGE_PCT = 10;
 
 // ---------- CSV parsing ----------
 function parseCSVLine(line) {
@@ -1327,11 +1496,15 @@ function enterLoadedState() {
   document.getElementById('tab-btn-chain').disabled = false;
   document.getElementById('tab-btn-builder').disabled = false;
   document.getElementById('tab-btn-templates').disabled = false;
+  document.getElementById('tab-btn-combined').disabled = false;
   document.getElementById('chain-empty').style.display = 'none';
   document.getElementById('chain-wrap').style.display = 'block';
   document.getElementById('builder-empty').style.display = 'none';
   document.getElementById('builder-grid').style.display = 'grid';
+  document.getElementById('combined-empty').style.display = 'none';
+  document.getElementById('combined-loaded').style.display = 'block';
   renderTemplates();
+  renderCombined();
 }
 
 function resetState() {
@@ -1341,17 +1514,24 @@ function resetState() {
   LEGS = [];
   TARGET_KEY = null;
   PAST_UNDERLYINGS = {};
+  F_FILES = {};
+  CB_LEGS = [];
+  CB_TARGET_KEY = null;
+  CB_PAST_UNDERLYINGS = {};
   document.getElementById('file-empty').style.display = 'block';
   document.getElementById('file-loaded').classList.remove('active');
   document.getElementById('tab-btn-chain').disabled = true;
   document.getElementById('tab-btn-builder').disabled = true;
   document.getElementById('tab-btn-templates').disabled = true;
+  document.getElementById('tab-btn-combined').disabled = true;
   document.getElementById('chain-empty').style.display = 'block';
   document.getElementById('chain-wrap').style.display = 'none';
   document.getElementById('builder-empty').style.display = 'block';
   document.getElementById('builder-grid').style.display = 'none';
   document.getElementById('templates-empty').style.display = 'block';
   document.getElementById('templates-ready').style.display = 'none';
+  document.getElementById('combined-empty').style.display = 'block';
+  document.getElementById('combined-loaded').style.display = 'none';
   switchTab('chain');
 }
 
@@ -2495,6 +2675,834 @@ function niceTicks(min, max, n) {
   return out;
 }
 
+
+// ============================================================================
+// F&O Builder tab — combined options + futures payoff
+// All functions/state below are purely additive — the existing Strategy
+// Builder code is untouched. CB_* / cb* / F_FILES are the only globals used.
+// ============================================================================
+
+// ---- Futures CSV parser (handles quoted multi-line field names) ----
+function splitCSVRowsRespectingQuotes(text) {
+  text = text.replace(/^\uFEFF/, '');
+  const rows = [];
+  let cur = '';
+  let inQuote = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (c === '"') {
+      if (inQuote && text[i + 1] === '"') { cur += '""'; i++; }
+      else { inQuote = !inQuote; cur += c; }
+    } else if ((c === '\n' || c === '\r') && !inQuote) {
+      if (c === '\r' && text[i + 1] === '\n') i++;
+      if (cur.trim().length > 0) rows.push(cur);
+      cur = '';
+    } else {
+      cur += c;
+    }
+  }
+  if (cur.trim().length > 0) rows.push(cur);
+  return rows;
+}
+
+function parseFuturesCSV(text) {
+  const rows = splitCSVRowsRespectingQuotes(text);
+  if (rows.length < 2) throw new Error('CSV has too few rows.');
+  const headers = parseCSVLine(rows[0]).map(h => h.replace(/[\r\n]+/g, ' ').trim().toUpperCase());
+  const idxInst = headers.findIndex(h => h.startsWith('INSTRUMENT'));
+  const idxSym  = headers.findIndex(h => h.startsWith('SYMBOL'));
+  const idxExp  = headers.findIndex(h => h.startsWith('EXPIRY'));
+  const idxLtp  = headers.findIndex(h => h === 'LTP');
+  const idxUnd  = headers.findIndex(h => h.startsWith('UNDERLYING'));
+  if (idxSym < 0 || idxExp < 0 || idxLtp < 0) {
+    throw new Error('Missing required columns (SYMBOL / EXPIRY / LTP).');
+  }
+  const contracts = [];
+  for (let i = 1; i < rows.length; i++) {
+    const cells = parseCSVLine(rows[i]).map(c => c.replace(/[\r\n]+/g, ' ').trim());
+    if (cells.length < headers.length) continue;
+    const instrument = (idxInst >= 0 ? cells[idxInst] : '').trim();
+    if (!/Futures/i.test(instrument)) continue;
+    const symbol = cells[idxSym];
+    const expRaw = cells[idxExp];                          // "30-Jun-2026"
+    const expiry = expRaw.replace(/-/g, ' ');              // "30 Jun 2026" (matches option-chain format)
+    const ltp = parseNum(cells[idxLtp]);
+    if (ltp == null) continue;
+    const underlying = idxUnd >= 0 ? parseNum(cells[idxUnd]) : null;
+    contracts.push({ symbol, expiry, ltp, underlying: underlying != null ? underlying : ltp });
+  }
+  return contracts;
+}
+
+// ---- Helpers ----
+function cbGetFile(key) { return FILES[key] || F_FILES[key] || null; }
+function cbAllFileKeys() { return [...Object.keys(FILES), ...Object.keys(F_FILES)]; }
+function cbPickDefaultTargetKey() {
+  const all = cbAllFileKeys();
+  if (all.length === 0) return null;
+  all.sort((a, b) => compareExpiries(cbGetFile(a), cbGetFile(b)));
+  return all[0];  // nearest
+}
+
+function cbDefaultPriceForOption(fileKey, strike, type, action) {
+  return defaultPriceForLeg(fileKey, strike, type, action);  // reuse existing helper
+}
+
+// ---- File handling: futures upload ----
+function onFutureFileSelect(ev) {
+  const files = Array.from(ev.target.files || []);
+  if (!files.length) return;
+  let processed = 0;
+  files.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const contracts = parseFuturesCSV(e.target.result);
+        if (contracts.length === 0) throw new Error('No futures contracts found.');
+        for (const c of contracts) {
+          const key = 'FUT__' + c.symbol + '__' + c.expiry;
+          F_FILES[key] = {
+            key, symbol: c.symbol, expiry: c.expiry,
+            fileName: file.name,
+            futurePrice: c.ltp,
+            underlying: c.underlying,
+            lotSize: LOT_SIZES[c.symbol] || 1
+          };
+        }
+      } catch (err) {
+        alert('Could not parse "' + file.name + '". ' + err.message);
+      }
+      processed++;
+      if (processed === files.length) {
+        if (!CB_TARGET_KEY || !cbGetFile(CB_TARGET_KEY)) {
+          CB_TARGET_KEY = cbPickDefaultTargetKey();
+        }
+        for (const k of cbAllFileKeys()) {
+          if (k !== CB_TARGET_KEY && CB_TARGET_KEY &&
+              compareExpiries(cbGetFile(k), cbGetFile(CB_TARGET_KEY)) < 0 &&
+              CB_PAST_UNDERLYINGS[k] == null) {
+            const f = cbGetFile(k);
+            CB_PAST_UNDERLYINGS[k] = f.spot != null ? f.spot : f.underlying;
+          }
+        }
+        renderCombined();
+      }
+    };
+    reader.readAsText(file);
+  });
+  ev.target.value = '';
+}
+
+function removeFutureFile(key) {
+  const legsOn = CB_LEGS.filter(l => l.kind === 'future' && l.fileKey === key);
+  if (legsOn.length > 0) {
+    if (!confirm(legsOn.length + ' future leg(s) on this contract will be removed. Continue?')) return;
+    CB_LEGS = CB_LEGS.filter(l => !(l.kind === 'future' && l.fileKey === key));
+  }
+  delete F_FILES[key];
+  delete CB_PAST_UNDERLYINGS[key];
+  if (CB_TARGET_KEY === key) CB_TARGET_KEY = cbPickDefaultTargetKey();
+  renderCombined();
+}
+
+// ---- Leg management ----
+function cbAddOptionLeg() {
+  const fileKeys = Object.keys(FILES);
+  if (fileKeys.length === 0) { alert('Upload an option chain CSV first.'); return; }
+  // Default to the active option file if any, else first.
+  const fk = (ACTIVE_KEY && FILES[ACTIVE_KEY]) ? ACTIVE_KEY : fileKeys[0];
+  const file = FILES[fk];
+  // ATM strike
+  let atm = file.rows[0].strike, bd = Infinity;
+  for (const r of file.rows) {
+    const d = Math.abs(r.strike - file.spot);
+    if (d < bd) { bd = d; atm = r.strike; }
+  }
+  CB_LEGS.push({
+    id: ++CB_LEG_ID, kind: 'option', fileKey: fk,
+    action: 'B', strike: atm, type: 'CE', lots: 1,
+    price: cbDefaultPriceForOption(fk, atm, 'CE', 'B')
+  });
+  renderCombined();
+}
+
+function cbAddFutureLeg() {
+  const fileKeys = Object.keys(F_FILES);
+  if (fileKeys.length === 0) { alert('Upload a futures CSV first (the link is at the top of this tab).'); return; }
+  const fk = fileKeys[0];
+  const file = F_FILES[fk];
+  CB_LEGS.push({
+    id: ++CB_LEG_ID, kind: 'future', fileKey: fk,
+    action: 'B', lots: 1, price: file.futurePrice
+  });
+  renderCombined();
+}
+
+function cbRemoveLeg(id) {
+  CB_LEGS = CB_LEGS.filter(l => l.id !== id);
+  renderCombined();
+}
+
+function cbUpdateLeg(id, field, value) {
+  const leg = CB_LEGS.find(l => l.id === id);
+  if (!leg) return;
+  if (field === 'fileKey') {
+    if (leg.kind === 'option') {
+      const newFile = FILES[value];
+      if (!newFile) return;
+      leg.fileKey = value;
+      const strikes = newFile.rows.map(r => r.strike);
+      if (!strikes.includes(leg.strike)) {
+        let best = strikes[0], bd = Infinity;
+        for (const k of strikes) {
+          const d = Math.abs(k - leg.strike);
+          if (d < bd) { bd = d; best = k; }
+        }
+        leg.strike = best;
+      }
+      leg.price = cbDefaultPriceForOption(leg.fileKey, leg.strike, leg.type, leg.action);
+    } else {
+      const newFile = F_FILES[value];
+      if (!newFile) return;
+      leg.fileKey = value;
+      leg.price = newFile.futurePrice;
+    }
+  } else if (field === 'action') leg.action = value;
+  else if (field === 'strike' && leg.kind === 'option') leg.strike = Number(value);
+  else if (field === 'type' && leg.kind === 'option') leg.type = value;
+  else if (field === 'lots') leg.lots = Math.max(1, Number(value) || 1);
+  else if (field === 'price') leg.price = Math.max(0, Number(value) || 0);
+  if ((field === 'action' || field === 'strike' || field === 'type') && leg.kind === 'option') {
+    leg.price = cbDefaultPriceForOption(leg.fileKey, leg.strike, leg.type, leg.action);
+  }
+  renderCombined();
+}
+
+// ---- Payoff math ----
+function cbLegPnL(leg, S_T) {
+  if (leg.kind === 'option') {
+    const file = FILES[leg.fileKey];
+    if (!file) return 0;
+    let S_at = S_T;
+    const target = cbGetFile(CB_TARGET_KEY);
+    if (target && leg.fileKey !== CB_TARGET_KEY) {
+      const cmp = compareExpiries(file, target);
+      if (cmp < 0) S_at = CB_PAST_UNDERLYINGS[leg.fileKey] != null ? CB_PAST_UNDERLYINGS[leg.fileKey] : file.spot;
+    }
+    let intrinsic;
+    if (leg.type === 'CE') intrinsic = Math.max(S_at - leg.strike, 0);
+    else intrinsic = Math.max(leg.strike - S_at, 0);
+    const qty = leg.lots * file.lotSize;
+    if (leg.action === 'B') return qty * (intrinsic - leg.price);
+    else return qty * (leg.price - intrinsic);
+  } else {
+    const file = F_FILES[leg.fileKey];
+    if (!file) return 0;
+    let S_at = S_T;
+    const target = cbGetFile(CB_TARGET_KEY);
+    if (target && leg.fileKey !== CB_TARGET_KEY) {
+      const cmp = compareExpiries(file, target);
+      if (cmp < 0) S_at = CB_PAST_UNDERLYINGS[leg.fileKey] != null ? CB_PAST_UNDERLYINGS[leg.fileKey] : file.underlying;
+    }
+    const qty = leg.lots * file.lotSize;
+    if (leg.action === 'B') return qty * (S_at - leg.price);
+    else return qty * (leg.price - S_at);
+  }
+}
+
+function cbTotalPnL(S_T) {
+  let sum = 0;
+  for (const leg of CB_LEGS) sum += cbLegPnL(leg, S_T);
+  return sum;
+}
+
+function computeCombinedStats() {
+  if (CB_LEGS.length === 0) {
+    return { legs: 0, netPremium: 0, maxProfit: 0, maxLoss: 0, breakevens: [], curve: [],
+             minS: 0, maxS: 0, refSpot: 0, maxProfitUnlimited: false, maxLossUnlimited: false };
+  }
+  const targetFile = cbGetFile(CB_TARGET_KEY);
+  let refSpot = 23000;
+  if (targetFile) refSpot = targetFile.spot != null ? targetFile.spot : targetFile.underlying;
+  else {
+    // fallback
+    const optKey = Object.keys(FILES)[0];
+    const futKey = Object.keys(F_FILES)[0];
+    if (optKey) refSpot = FILES[optKey].spot;
+    else if (futKey) refSpot = F_FILES[futKey].underlying;
+  }
+
+  const pct = CB_CHART_RANGE_PCT / 100;
+  let minS = refSpot * (1 - pct);
+  let maxS = refSpot * (1 + pct);
+  for (const leg of CB_LEGS) {
+    if (leg.kind === 'option' && leg.strike != null) {
+      if (leg.strike < minS) minS = leg.strike * 0.95;
+      if (leg.strike > maxS) maxS = leg.strike * 1.05;
+    }
+  }
+  minS = Math.max(0, minS);
+
+  const N = 240;
+  const curve = [];
+  for (let i = 0; i <= N; i++) {
+    const s = minS + (i / N) * (maxS - minS);
+    curve.push({ s, p: cbTotalPnL(s) });
+  }
+
+  // Slopes — past legs don't vary with S_T, so skip them
+  let upSlope = 0, downSlope = 0;
+  for (const leg of CB_LEGS) {
+    const file = leg.kind === 'option' ? FILES[leg.fileKey] : F_FILES[leg.fileKey];
+    if (!file) continue;
+    const target = cbGetFile(CB_TARGET_KEY);
+    if (target && leg.fileKey !== CB_TARGET_KEY && compareExpiries(file, target) < 0) continue;
+    const qty = leg.lots * file.lotSize;
+    const sgn = leg.action === 'B' ? 1 : -1;
+    if (leg.kind === 'option') {
+      if (leg.type === 'CE') upSlope += sgn * qty;
+      if (leg.type === 'PE') downSlope -= sgn * qty;
+    } else {
+      // Future leg: linear with S_T everywhere
+      upSlope += sgn * qty;
+      downSlope += sgn * qty;
+    }
+  }
+  const maxProfitUnlimited = upSlope > 1e-9 || downSlope < -1e-9;
+  const maxLossUnlimited   = upSlope < -1e-9 || downSlope > 1e-9;
+
+  let mxP = -Infinity, mnP = Infinity;
+  for (const pt of curve) {
+    if (pt.p > mxP) mxP = pt.p;
+    if (pt.p < mnP) mnP = pt.p;
+  }
+
+  const breakevens = [];
+  for (let i = 1; i < curve.length; i++) {
+    const a = curve[i-1], b = curve[i];
+    if ((a.p < 0 && b.p > 0) || (a.p > 0 && b.p < 0)) {
+      const t = -a.p / (b.p - a.p);
+      breakevens.push(a.s + t * (b.s - a.s));
+    }
+  }
+
+  // Net premium — options only (futures don't have a premium concept).
+  let netPremium = 0;
+  for (const leg of CB_LEGS) {
+    if (leg.kind !== 'option') continue;
+    const file = FILES[leg.fileKey];
+    if (!file) continue;
+    const qty = leg.lots * file.lotSize;
+    const sgn = leg.action === 'B' ? -1 : 1;
+    netPremium += sgn * qty * leg.price;
+  }
+
+  return { legs: CB_LEGS.length, netPremium, maxProfit: mxP, maxLoss: mnP,
+           maxProfitUnlimited, maxLossUnlimited, breakevens, curve, minS, maxS, refSpot };
+}
+
+// ---- Render ----
+function renderCombined() {
+  if (Object.keys(FILES).length === 0) return;  // empty state handled by HTML/CSS
+  renderFutureChips();
+  renderCombinedLegs();
+  renderCombinedTargetSection();
+  const stats = computeCombinedStats();
+  renderCombinedSummary(stats);
+  renderCombinedChart(stats);
+}
+
+function renderFutureChips() {
+  const wrap = document.getElementById('cb-fut-chips');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  const keys = Object.keys(F_FILES).sort((a, b) => compareExpiries(F_FILES[a], F_FILES[b]));
+  keys.forEach(key => {
+    const f = F_FILES[key];
+    const chip = document.createElement('div');
+    chip.className = 'cb-fut-chip';
+    chip.title = f.fileName;
+    const lab = document.createElement('span');
+    lab.textContent = f.symbol + ' · ' + f.expiry;
+    chip.appendChild(lab);
+    const price = document.createElement('span');
+    price.className = 'cb-fut-chip-price';
+    price.textContent = '@ ' + fmt(f.futurePrice, 2);
+    chip.appendChild(price);
+    const close = document.createElement('button');
+    close.className = 'cb-fut-chip-close';
+    close.textContent = '×';
+    close.title = 'Remove this futures contract';
+    close.onclick = (e) => { e.stopPropagation(); removeFutureFile(key); };
+    chip.appendChild(close);
+    wrap.appendChild(chip);
+  });
+  const add = document.createElement('button');
+  add.className = 'cb-fut-chip add-chip';
+  add.textContent = keys.length === 0 ? '+ Upload futures CSV' : '+ Add more';
+  add.onclick = () => document.getElementById('cb-future-input').click();
+  wrap.appendChild(add);
+}
+
+function renderCombinedLegs() {
+  const list = document.getElementById('cb-legs-list');
+  if (!list) return;
+  list.innerHTML = '';
+  if (CB_LEGS.length === 0) {
+    const empty = document.createElement('div');
+    empty.style.cssText = 'padding: 1.2rem 0; text-align: center; font-family: "JetBrains Mono", monospace; font-size: 0.78rem; color: var(--muted);';
+    empty.textContent = 'No legs yet. Add an option or future leg to begin.';
+    list.appendChild(empty);
+    return;
+  }
+  CB_LEGS.forEach(leg => {
+    const row = document.createElement('div');
+    row.className = 'leg-row';
+
+    // B/S toggle
+    const bs = document.createElement('button');
+    bs.className = 'leg-bs ' + (leg.action === 'B' ? 'buy' : 'sell');
+    bs.textContent = leg.action;
+    bs.onclick = () => cbUpdateLeg(leg.id, 'action', leg.action === 'B' ? 'S' : 'B');
+    row.appendChild(bs);
+
+    // Expiry select (within the same kind)
+    const exp = document.createElement('select');
+    exp.className = 'leg-select';
+    const sameKindFiles = leg.kind === 'option' ? Object.values(FILES) : Object.values(F_FILES);
+    sameKindFiles.forEach(f => {
+      const o = document.createElement('option');
+      o.value = f.key;
+      const parts = f.expiry.split(' ');
+      o.textContent = parts.length >= 2 ? (parts[0] + ' ' + parts[1]) : f.expiry;
+      if (f.key === leg.fileKey) o.selected = true;
+      exp.appendChild(o);
+    });
+    exp.onchange = () => cbUpdateLeg(leg.id, 'fileKey', exp.value);
+    row.appendChild(exp);
+
+    if (leg.kind === 'option') {
+      // Strike select
+      const legFile = FILES[leg.fileKey];
+      const strikes = legFile ? legFile.rows.map(r => r.strike) : [];
+      const strike = document.createElement('select');
+      strike.className = 'leg-select';
+      strikes.forEach(k => {
+        const o = document.createElement('option');
+        o.value = k; o.textContent = fmt(k, 0);
+        if (k === leg.strike) o.selected = true;
+        strike.appendChild(o);
+      });
+      strike.onchange = () => cbUpdateLeg(leg.id, 'strike', strike.value);
+      row.appendChild(strike);
+
+      // Type select
+      const type = document.createElement('select');
+      type.className = 'leg-select';
+      ['CE','PE'].forEach(t => {
+        const o = document.createElement('option');
+        o.value = t; o.textContent = t;
+        if (t === leg.type) o.selected = true;
+        type.appendChild(o);
+      });
+      type.onchange = () => cbUpdateLeg(leg.id, 'type', type.value);
+      row.appendChild(type);
+    } else {
+      // Future leg — show FUT badge in the strike column, blank in type
+      const futCell = document.createElement('div');
+      futCell.className = 'cb-fut-cell';
+      const badge = document.createElement('span');
+      badge.className = 'cb-fut-badge';
+      badge.textContent = 'FUT';
+      futCell.appendChild(badge);
+      row.appendChild(futCell);
+      const typeCell = document.createElement('div');
+      typeCell.className = 'cb-fut-cell';
+      typeCell.textContent = '—';
+      row.appendChild(typeCell);
+    }
+
+    // Lots
+    const lots = document.createElement('input');
+    lots.className = 'leg-input';
+    lots.type = 'number'; lots.min = '1'; lots.step = '1';
+    lots.value = leg.lots;
+    lots.onchange = () => cbUpdateLeg(leg.id, 'lots', lots.value);
+    row.appendChild(lots);
+
+    // Price
+    const price = document.createElement('input');
+    price.className = 'leg-input';
+    price.type = 'number'; price.min = '0'; price.step = '0.05';
+    price.value = (leg.price != null ? leg.price : 0).toFixed(2);
+    price.onchange = () => cbUpdateLeg(leg.id, 'price', price.value);
+    row.appendChild(price);
+
+    // Delete
+    const del = document.createElement('button');
+    del.className = 'leg-del';
+    del.textContent = '×';
+    del.title = 'Remove leg';
+    del.onclick = () => cbRemoveLeg(leg.id);
+    row.appendChild(del);
+
+    list.appendChild(row);
+  });
+}
+
+function renderCombinedTargetSection() {
+  const wrap = document.getElementById('cb-target-section');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  const keys = cbAllFileKeys();
+  if (keys.length <= 1) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+
+  const head = document.createElement('div');
+  head.className = 'target-head';
+  const lbl = document.createElement('span');
+  lbl.className = 'target-label';
+  lbl.textContent = 'Target Date';
+  head.appendChild(lbl);
+  const sel = document.createElement('select');
+  sel.className = 'leg-select target-select';
+  const sortedKeys = keys.slice().sort((a, b) => compareExpiries(cbGetFile(a), cbGetFile(b)));
+  for (const k of sortedKeys) {
+    const f = cbGetFile(k);
+    const o = document.createElement('option');
+    o.value = k;
+    o.textContent = (k.startsWith('FUT__') ? 'FUT · ' : '') + f.symbol + ' · ' + f.expiry;
+    if (k === CB_TARGET_KEY) o.selected = true;
+    sel.appendChild(o);
+  }
+  sel.onchange = () => {
+    CB_TARGET_KEY = sel.value;
+    for (const k of cbAllFileKeys()) {
+      if (k !== CB_TARGET_KEY && compareExpiries(cbGetFile(k), cbGetFile(CB_TARGET_KEY)) < 0 && CB_PAST_UNDERLYINGS[k] == null) {
+        const f = cbGetFile(k);
+        CB_PAST_UNDERLYINGS[k] = f.spot != null ? f.spot : f.underlying;
+      }
+    }
+    renderCombined();
+  };
+  head.appendChild(sel);
+  wrap.appendChild(head);
+
+  const pastKeys = sortedKeys.filter(k => k !== CB_TARGET_KEY && CB_TARGET_KEY && compareExpiries(cbGetFile(k), cbGetFile(CB_TARGET_KEY)) < 0);
+  if (pastKeys.length > 0) {
+    const sub = document.createElement('div');
+    sub.className = 'target-sub';
+    sub.textContent = 'Settled underlying at past expiries';
+    wrap.appendChild(sub);
+    pastKeys.forEach((k, i) => {
+      const file = cbGetFile(k);
+      const refSpot = file.spot != null ? file.spot : file.underlying;
+      const cur = CB_PAST_UNDERLYINGS[k] != null ? CB_PAST_UNDERLYINGS[k] : refSpot;
+      const row = document.createElement('div');
+      row.className = 'past-row' + (i === 0 ? ' first' : '');
+      const lab = document.createElement('div');
+      lab.className = 'past-label';
+      lab.textContent = (k.startsWith('FUT__') ? 'FUT · ' : '') + file.symbol + ' on ' + file.expiry;
+      row.appendChild(lab);
+      const controls = document.createElement('div');
+      controls.className = 'past-controls';
+      const slider = document.createElement('input');
+      slider.type = 'range';
+      slider.className = 'past-slider';
+      slider.min = Math.max(0, refSpot * 0.75).toFixed(2);
+      slider.max = (refSpot * 1.25).toFixed(2);
+      slider.step = '0.05';
+      slider.value = cur.toFixed(2);
+      const num = document.createElement('input');
+      num.type = 'number';
+      num.className = 'past-input';
+      num.step = '0.05';
+      num.value = cur.toFixed(2);
+      const pct = document.createElement('span');
+      pct.className = 'past-pct';
+      const updatePct = (v) => {
+        const p = refSpot > 0 ? ((v - refSpot) / refSpot) * 100 : 0;
+        pct.textContent = (p >= 0 ? '+' : '') + p.toFixed(2) + '%';
+        pct.style.color = p >= 0 ? 'var(--pos)' : 'var(--neg)';
+      };
+      updatePct(cur);
+      slider.oninput = () => {
+        const v = Number(slider.value);
+        CB_PAST_UNDERLYINGS[k] = v;
+        num.value = v.toFixed(2);
+        updatePct(v);
+        const stats = computeCombinedStats();
+        renderCombinedSummary(stats);
+        renderCombinedChart(stats);
+      };
+      num.onchange = () => {
+        const v = Math.max(0, Number(num.value) || 0);
+        CB_PAST_UNDERLYINGS[k] = v;
+        slider.value = v.toFixed(2);
+        updatePct(v);
+        const stats = computeCombinedStats();
+        renderCombinedSummary(stats);
+        renderCombinedChart(stats);
+      };
+      controls.appendChild(slider);
+      controls.appendChild(num);
+      controls.appendChild(pct);
+      row.appendChild(controls);
+      wrap.appendChild(row);
+    });
+  }
+
+  // Warning for future-expiry legs (legs with expiry > target)
+  const futureLegs = CB_LEGS.filter(l => {
+    const f = l.kind === 'option' ? FILES[l.fileKey] : F_FILES[l.fileKey];
+    if (!f || !CB_TARGET_KEY || !cbGetFile(CB_TARGET_KEY)) return false;
+    return compareExpiries(f, cbGetFile(CB_TARGET_KEY)) > 0;
+  });
+  if (futureLegs.length > 0) {
+    const warn = document.createElement('div');
+    warn.className = 'target-warn';
+    const txt = document.createElement('span');
+    txt.innerHTML = '⚠ ' + futureLegs.length + ' leg(s) live at expiry <strong>later</strong> than the target date. ';
+    warn.appendChild(txt);
+    let latestKey = null;
+    for (const l of futureLegs) {
+      const f = l.kind === 'option' ? FILES[l.fileKey] : F_FILES[l.fileKey];
+      if (!latestKey || compareExpiries(f, cbGetFile(latestKey)) > 0) latestKey = l.fileKey;
+    }
+    if (latestKey) {
+      const btn = document.createElement('button');
+      btn.className = 'target-warn-btn';
+      btn.textContent = 'Switch to ' + cbGetFile(latestKey).expiry;
+      btn.onclick = () => {
+        CB_TARGET_KEY = latestKey;
+        for (const k of cbAllFileKeys()) {
+          if (k !== CB_TARGET_KEY && compareExpiries(cbGetFile(k), cbGetFile(CB_TARGET_KEY)) < 0 && CB_PAST_UNDERLYINGS[k] == null) {
+            const f = cbGetFile(k);
+            CB_PAST_UNDERLYINGS[k] = f.spot != null ? f.spot : f.underlying;
+          }
+        }
+        renderCombined();
+      };
+      warn.appendChild(btn);
+    }
+    wrap.appendChild(warn);
+  }
+}
+
+function renderCombinedSummary(s) {
+  const mpEl = document.getElementById('cb-stat-max-profit');
+  const mlEl = document.getElementById('cb-stat-max-loss');
+  const npEl = document.getElementById('cb-stat-net-premium');
+  const npSub = document.getElementById('cb-stat-net-premium-sub');
+  const rrEl = document.getElementById('cb-stat-rr');
+  const beEl = document.getElementById('cb-stat-breakeven');
+  if (CB_LEGS.length === 0) {
+    mpEl.textContent = '—'; mpEl.className = 'value';
+    mlEl.textContent = '—'; mlEl.className = 'value';
+    npEl.textContent = '—'; npEl.className = 'value'; npSub.textContent = '';
+    rrEl.textContent = '—'; rrEl.className = 'value';
+    beEl.textContent = '—'; beEl.className = 'value';
+    return;
+  }
+  if (s.maxProfitUnlimited) { mpEl.textContent = 'Unlimited'; mpEl.className = 'value pos'; }
+  else { mpEl.textContent = fmtRupees(s.maxProfit); mpEl.className = 'value pos'; }
+  if (s.maxLossUnlimited) { mlEl.textContent = 'Unlimited'; mlEl.className = 'value neg'; }
+  else { mlEl.textContent = fmtRupees(s.maxLoss); mlEl.className = 'value neg'; }
+  npEl.textContent = fmtRupees(s.netPremium);
+  npEl.className = 'value ' + (s.netPremium >= 0 ? 'pos' : 'neg');
+  npSub.textContent = s.netPremium >= 0 ? 'credit received (options)' : 'debit paid (options)';
+  if (!s.maxProfitUnlimited && !s.maxLossUnlimited && s.maxLoss < 0) {
+    const rr = s.maxProfit / Math.abs(s.maxLoss);
+    rrEl.textContent = rr.toFixed(2) + ' : 1';
+    rrEl.className = 'value accent';
+  } else if (s.maxProfitUnlimited) {
+    rrEl.textContent = '∞'; rrEl.className = 'value accent';
+  } else {
+    rrEl.textContent = '—'; rrEl.className = 'value';
+  }
+  if (s.breakevens.length === 0) {
+    beEl.textContent = 'None in range'; beEl.className = 'value';
+  } else {
+    beEl.textContent = s.breakevens.map(b => fmt(b, 2)).join('   ·   ');
+    beEl.className = 'value accent';
+  }
+}
+
+function renderCombinedChart(s) {
+  const svg = document.getElementById('cb-payoff-chart');
+  if (!svg) return;
+  svg.innerHTML = '';
+  const W = 900, H = 460;
+  const M = { top: 30, right: 70, bottom: 50, left: 80 };
+  const PW = W - M.left - M.right;
+  const PH = H - M.top - M.bottom;
+
+  if (CB_LEGS.length === 0) {
+    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    text.setAttribute('x', W/2); text.setAttribute('y', H/2);
+    text.setAttribute('text-anchor', 'middle');
+    text.setAttribute('class', 'axis-label');
+    text.setAttribute('fill', '#8b8f99');
+    text.style.fontSize = '13px';
+    text.textContent = 'Add an option or future leg to see the payoff';
+    svg.appendChild(text);
+    return;
+  }
+
+  const { minS, maxS, curve, refSpot } = s;
+  let yMin = Math.min(0, ...curve.map(p => p.p));
+  let yMax = Math.max(0, ...curve.map(p => p.p));
+  if (yMin === yMax) { yMin -= 100; yMax += 100; }
+  const yPad = (yMax - yMin) * 0.12;
+  yMin -= yPad; yMax += yPad;
+
+  const xScale = (v) => M.left + ((v - minS) / (maxS - minS)) * PW;
+  const yScale = (v) => M.top + (1 - (v - yMin) / (yMax - yMin)) * PH;
+
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+  const el = (name, attrs = {}) => {
+    const e = document.createElementNS(SVG_NS, name);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  };
+
+  // Grid lines
+  const yTicks = niceTicks(yMin, yMax, 6);
+  for (const t of yTicks) {
+    if (t === 0) continue;
+    const y = yScale(t);
+    svg.appendChild(el('line', { x1: M.left, x2: M.left + PW, y1: y, y2: y, class: 'grid-line' }));
+  }
+  const xTicks = niceTicks(minS, maxS, 7);
+  for (const t of xTicks) {
+    const x = xScale(t);
+    svg.appendChild(el('line', { x1: x, x2: x, y1: M.top, y2: M.top + PH, class: 'grid-line' }));
+  }
+  if (yMin <= 0 && yMax >= 0) {
+    const y0 = yScale(0);
+    svg.appendChild(el('line', { x1: M.left, x2: M.left + PW, y1: y0, y2: y0, class: 'zero-line' }));
+  }
+
+  const zeroY = (yMin <= 0 && yMax >= 0) ? yScale(0) : (yMax < 0 ? M.top : M.top + PH);
+  let polyPath = '';
+  curve.forEach((pt, i) => { polyPath += (i === 0 ? 'M' : ' L') + xScale(pt.s).toFixed(2) + ' ' + yScale(pt.p).toFixed(2); });
+  const xLeft = xScale(curve[0].s).toFixed(2);
+  const xRight = xScale(curve[curve.length - 1].s).toFixed(2);
+  const polyFill = 'M' + xLeft + ' ' + zeroY + ' ' + polyPath.substring(1) + ' L' + xRight + ' ' + zeroY + ' Z';
+
+  const defs = el('defs');
+  const clipAbove = el('clipPath', { id: 'cb-clip-above' });
+  clipAbove.appendChild(el('rect', { x: M.left, y: M.top, width: PW, height: Math.max(0, zeroY - M.top) }));
+  defs.appendChild(clipAbove);
+  const clipBelow = el('clipPath', { id: 'cb-clip-below' });
+  clipBelow.appendChild(el('rect', { x: M.left, y: zeroY, width: PW, height: Math.max(0, M.top + PH - zeroY) }));
+  defs.appendChild(clipBelow);
+  svg.appendChild(defs);
+
+  svg.appendChild(el('path', { d: polyFill, fill: 'var(--pos)', opacity: '0.22', 'clip-path': 'url(#cb-clip-above)' }));
+  svg.appendChild(el('path', { d: polyFill, fill: 'var(--neg)', opacity: '0.22', 'clip-path': 'url(#cb-clip-below)' }));
+  svg.appendChild(el('path', { d: polyPath, class: 'payoff-line' }));
+
+  for (const b of s.breakevens) {
+    const x = xScale(b);
+    svg.appendChild(el('line', { x1: x, x2: x, y1: yScale(0) - 6, y2: yScale(0) + 6, class: 'breakeven-mark' }));
+    const t = el('text', { x, y: yScale(0) - 9, 'text-anchor': 'middle', class: 'strike-mark' });
+    t.textContent = fmt(b, 0);
+    svg.appendChild(t);
+  }
+
+  if (refSpot >= minS && refSpot <= maxS) {
+    const xSpot = xScale(refSpot);
+    svg.appendChild(el('line', { x1: xSpot, x2: xSpot, y1: M.top, y2: M.top + PH, class: 'spot-line' }));
+    const t = el('text', { x: xSpot, y: M.top - 6, 'text-anchor': 'middle', class: 'spot-label' });
+    t.textContent = 'Ref ' + fmt(refSpot, 2);
+    svg.appendChild(t);
+  }
+
+  // Leg strike markers for option legs only
+  for (const leg of CB_LEGS) {
+    if (leg.kind !== 'option') continue;
+    if (leg.strike < minS || leg.strike > maxS) continue;
+    const x = xScale(leg.strike);
+    svg.appendChild(el('circle', {
+      cx: x, cy: M.top + PH + 12, r: 3.5, class: 'leg-marker',
+      fill: leg.action === 'B' ? 'var(--buy)' : 'var(--sell)'
+    }));
+  }
+
+  // Y axis labels
+  for (const t of yTicks) {
+    const y = yScale(t);
+    const lbl = el('text', { x: M.left - 8, y: y + 3, 'text-anchor': 'end', class: 'axis-label' });
+    lbl.textContent = formatPnLAxis(t);
+    svg.appendChild(lbl);
+  }
+  // X axis labels
+  for (const t of xTicks) {
+    const x = xScale(t);
+    const lbl = el('text', { x, y: M.top + PH + 22, 'text-anchor': 'middle', class: 'axis-label' });
+    lbl.textContent = fmt(t, 0);
+    svg.appendChild(lbl);
+  }
+  const yTitle = el('text', { x: 20, y: M.top + PH / 2, 'text-anchor': 'middle', class: 'axis-label', transform: 'rotate(-90 20 ' + (M.top + PH / 2) + ')' });
+  yTitle.textContent = 'P / L (₹)';
+  svg.appendChild(yTitle);
+  const targetExp = (CB_TARGET_KEY && cbGetFile(CB_TARGET_KEY)) ? cbGetFile(CB_TARGET_KEY).expiry : 'expiry';
+  const xTitle = el('text', { x: M.left + PW / 2, y: H - 8, 'text-anchor': 'middle', class: 'axis-label' });
+  xTitle.textContent = 'Underlying at ' + targetExp;
+  svg.appendChild(xTitle);
+
+  // Hover overlay
+  const hoverGroup = el('g', { 'pointer-events': 'none', visibility: 'hidden' });
+  const hoverVLine = el('line', { y1: M.top, y2: M.top + PH, class: 'hover-vline' });
+  hoverGroup.appendChild(hoverVLine);
+  const hoverDot = el('circle', { r: 4, class: 'hover-dot' });
+  hoverGroup.appendChild(hoverDot);
+  const hoverText1 = el('text', { class: 'hover-tooltip-text' });
+  hoverGroup.appendChild(hoverText1);
+  const hoverText2 = el('text', { class: 'hover-tooltip-text' });
+  hoverGroup.appendChild(hoverText2);
+  svg.appendChild(hoverGroup);
+  const overlay = el('rect', { x: M.left, y: M.top, width: PW, height: PH, class: 'hover-overlay' });
+  overlay.addEventListener('mousemove', (ev) => {
+    try {
+      const ctm = svg.getScreenCTM();
+      if (!ctm) return;
+      const p = svg.createSVGPoint();
+      p.x = ev.clientX; p.y = ev.clientY;
+      const sp = p.matrixTransform(ctm.inverse());
+      const x = sp.x;
+      if (x < M.left || x > M.left + PW) { hoverGroup.setAttribute('visibility', 'hidden'); return; }
+      const sValue = minS + ((x - M.left) / PW) * (maxS - minS);
+      let bestIdx = 0, bestDiff = Infinity;
+      for (let i = 0; i < curve.length; i++) {
+        const d = Math.abs(curve[i].s - sValue);
+        if (d < bestDiff) { bestDiff = d; bestIdx = i; }
+      }
+      const hp = curve[bestIdx];
+      const hx = xScale(hp.s);
+      const hy = yScale(hp.p);
+      hoverGroup.setAttribute('visibility', 'visible');
+      hoverVLine.setAttribute('x1', hx); hoverVLine.setAttribute('x2', hx);
+      hoverDot.setAttribute('cx', hx); hoverDot.setAttribute('cy', hy);
+      const flipLeft = hx > M.left + PW - 130;
+      const tx = flipLeft ? hx - 10 : hx + 10;
+      const anchor = flipLeft ? 'end' : 'start';
+      const ty1 = Math.max(M.top + 12, Math.min(M.top + PH - 18, hy - 12));
+      const ty2 = ty1 + 16;
+      hoverText1.textContent = 'S  ' + fmt(hp.s, 0);
+      hoverText2.textContent = 'P/L  ' + fmtRupees(hp.p);
+      hoverText1.setAttribute('x', tx); hoverText1.setAttribute('y', ty1); hoverText1.setAttribute('text-anchor', anchor);
+      hoverText2.setAttribute('x', tx); hoverText2.setAttribute('y', ty2); hoverText2.setAttribute('text-anchor', anchor);
+      hoverText2.setAttribute('fill', hp.p >= 0 ? 'var(--pos)' : 'var(--neg)');
+    } catch (err) {
+      hoverGroup.setAttribute('visibility', 'hidden');
+    }
+  });
+  overlay.addEventListener('mouseleave', () => { hoverGroup.setAttribute('visibility', 'hidden'); });
+  svg.appendChild(overlay);
+}
+
 // ---------- Init ----------
 document.getElementById('file-input').addEventListener('change', onFileSelect);
 document.getElementById('replace-btn').addEventListener('click', resetState);
@@ -2521,6 +3529,21 @@ document.getElementById('input-lot').addEventListener('change', (e) => {
 document.getElementById('tmpl-expiry').addEventListener('change', updateTemplateDesc);
 document.getElementById('tmpl-type').addEventListener('change', updateTemplateDesc);
 document.getElementById('tmpl-apply').addEventListener('click', applyTemplate);
+
+// F&O Builder listeners
+document.getElementById('cb-future-input').addEventListener('change', onFutureFileSelect);
+document.getElementById('cb-add-option-btn').addEventListener('click', cbAddOptionLeg);
+document.getElementById('cb-add-future-btn').addEventListener('click', cbAddFutureLeg);
+document.getElementById('cb-clear-legs').addEventListener('click', () => { CB_LEGS = []; renderCombined(); });
+document.querySelectorAll('[data-cb-range]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    CB_CHART_RANGE_PCT = parseInt(btn.dataset.cbRange, 10);
+    document.querySelectorAll('[data-cb-range]').forEach(b => b.classList.toggle('active', b === btn));
+    renderCombinedSummary();
+    renderCombinedChart();
+  });
+});
+document.getElementById('tab-btn-combined').addEventListener('click', renderCombined);
 document.querySelectorAll('.range-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     const pct = Number(btn.dataset.range);
